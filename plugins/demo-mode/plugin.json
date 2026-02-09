@@ -1,0 +1,10 @@
+{
+    "id": "demo-mode",
+    "name": "Demo Mode",
+    "description": "Demo accounts, sample 3D models, and periodic reset for demonstration instances.",
+    "version": "1.0.0",
+    "author": "MeshSilo",
+    "min_silo_version": "1.0.0",
+    "icon": "play-circle",
+    "category": "Development"
+}

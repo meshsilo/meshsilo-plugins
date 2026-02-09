@@ -1,0 +1,10 @@
+{
+    "id": "webhooks",
+    "name": "Webhooks",
+    "description": "HTTP webhook notifications for application events with retry support.",
+    "version": "1.0.0",
+    "author": "MeshSilo",
+    "min_silo_version": "1.0.0",
+    "icon": "link",
+    "category": "Integration"
+}

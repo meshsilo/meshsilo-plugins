@@ -1,0 +1,10 @@
+{
+    "id": "rum",
+    "name": "Real User Monitoring",
+    "description": "Client-side performance monitoring and page load analytics.",
+    "version": "1.0.0",
+    "author": "MeshSilo",
+    "min_silo_version": "1.0.0",
+    "icon": "zap",
+    "category": "Analytics"
+}

@@ -1,0 +1,10 @@
+{
+    "id": "teams",
+    "name": "Teams",
+    "description": "Team collaboration with shared model access and team invitations.",
+    "version": "1.0.0",
+    "author": "MeshSilo",
+    "min_silo_version": "1.0.0",
+    "icon": "users",
+    "category": "Collaboration"
+}
