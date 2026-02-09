@@ -17,6 +17,17 @@
             "path": "plugins/hello-world",
             "icon": "puzzle",
             "category": "Development"
+        },
+        {
+            "id": "sso",
+            "name": "Single Sign-On",
+            "description": "External authentication via OIDC, SAML, LDAP/AD, SCIM provisioning, and OAuth2 provider.",
+            "version": "1.0.0",
+            "author": "MeshSilo",
+            "min_silo_version": "1.0.0",
+            "path": "plugins/sso",
+            "icon": "unlock",
+            "category": "Authentication"
         }
     ]
 }
