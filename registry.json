@@ -28,6 +28,83 @@
             "path": "plugins/sso",
             "icon": "unlock",
             "category": "Authentication"
+        },
+        {
+            "id": "analytics",
+            "name": "Analytics & Reports",
+            "description": "Usage analytics dashboard, print analytics, scheduled reports, and CLI report generation.",
+            "version": "1.0.0",
+            "author": "MeshSilo",
+            "min_silo_version": "1.0.0",
+            "path": "plugins/analytics",
+            "icon": "activity",
+            "category": "Analytics"
+        },
+        {
+            "id": "backups",
+            "name": "Backups & Cloud",
+            "description": "Database backup and restore with cloud replication support for S3, Dropbox, Google Drive, and OneDrive.",
+            "version": "1.0.0",
+            "author": "MeshSilo",
+            "min_silo_version": "1.0.0",
+            "path": "plugins/backups",
+            "icon": "archive",
+            "category": "System"
+        },
+        {
+            "id": "retention",
+            "name": "Retention Policies",
+            "description": "Data retention policies, legal holds, automated cleanup, and compliance reporting.",
+            "version": "1.0.0",
+            "author": "MeshSilo",
+            "min_silo_version": "1.0.0",
+            "path": "plugins/retention",
+            "icon": "shield",
+            "category": "Compliance"
+        },
+        {
+            "id": "demo-mode",
+            "name": "Demo Mode",
+            "description": "Demo accounts, sample NASA 3D models, and periodic reset for demonstration instances.",
+            "version": "1.0.0",
+            "author": "MeshSilo",
+            "min_silo_version": "1.0.0",
+            "path": "plugins/demo-mode",
+            "icon": "play-circle",
+            "category": "Development"
+        },
+        {
+            "id": "rum",
+            "name": "Real User Monitoring",
+            "description": "Client-side performance analytics with Core Web Vitals tracking and browser metrics.",
+            "version": "1.0.0",
+            "author": "MeshSilo",
+            "min_silo_version": "1.0.0",
+            "path": "plugins/rum",
+            "icon": "zap",
+            "category": "Analytics"
+        },
+        {
+            "id": "teams",
+            "name": "Teams",
+            "description": "Team collaboration with shared model access, membership management, and invitation system.",
+            "version": "1.0.0",
+            "author": "MeshSilo",
+            "min_silo_version": "1.0.0",
+            "path": "plugins/teams",
+            "icon": "users",
+            "category": "Collaboration"
+        },
+        {
+            "id": "webhooks",
+            "name": "Webhooks",
+            "description": "HTTP webhook notifications for application events with retry support, HMAC-SHA256 signatures, and delivery logging.",
+            "version": "1.0.0",
+            "author": "MeshSilo",
+            "min_silo_version": "1.0.0",
+            "path": "plugins/webhooks",
+            "icon": "link",
+            "category": "Integration"
         }
     ]
 }
