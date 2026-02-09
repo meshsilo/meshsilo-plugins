@@ -9,7 +9,7 @@
             "version": "1.0.0",
             "author": "MeshSilo",
             "min_silo_version": "1.0.0",
-            "download_url": "https://github.com/meshsilo/silo-plugins/releases/download/hello-world-v1.0.0/hello-world.zip",
+            "download_url": "https://github.com/meshsilo/meshsilo-plugins/releases/download/hello-world-v1.0.0/hello-world.zip",
             "icon": "puzzle",
             "category": "Development"
         }
