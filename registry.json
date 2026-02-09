@@ -1,6 +1,11 @@
 {
     "name": "MeshSilo Official Plugins",
-    "version": 1,
+    "version": 2,
+    "source": {
+        "type": "github",
+        "repo": "meshsilo/meshsilo-plugins",
+        "branch": "dev"
+    },
     "plugins": [
         {
             "id": "hello-world",
@@ -9,7 +14,7 @@
             "version": "1.0.0",
             "author": "MeshSilo",
             "min_silo_version": "1.0.0",
-            "download_url": "https://github.com/meshsilo/meshsilo-plugins/releases/download/hello-world-v1.0.0/hello-world.zip",
+            "path": "plugins/hello-world",
             "icon": "puzzle",
             "category": "Development"
         }
