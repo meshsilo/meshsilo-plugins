@@ -1,0 +1,10 @@
+{
+    "id": "backups",
+    "name": "Backups & Cloud",
+    "description": "Database backup and restore with cloud replication support for S3, Dropbox, Google Drive, and OneDrive.",
+    "version": "1.0.0",
+    "author": "MeshSilo",
+    "min_silo_version": "1.0.0",
+    "icon": "archive",
+    "category": "System"
+}

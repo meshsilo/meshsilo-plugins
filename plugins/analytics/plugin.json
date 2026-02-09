@@ -1,0 +1,10 @@
+{
+    "id": "analytics",
+    "name": "Analytics & Reports",
+    "description": "Dashboard analytics, print statistics, and scheduled report generation with email delivery.",
+    "version": "1.0.0",
+    "author": "MeshSilo",
+    "min_silo_version": "1.0.0",
+    "icon": "activity",
+    "category": "Analytics"
+}

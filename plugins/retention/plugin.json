@@ -1,0 +1,10 @@
+{
+    "id": "retention",
+    "name": "Retention Policies",
+    "description": "Automated data retention policies, archiving rules, and legal hold management.",
+    "version": "1.0.0",
+    "author": "MeshSilo",
+    "min_silo_version": "1.0.0",
+    "icon": "shield",
+    "category": "Compliance"
+}
