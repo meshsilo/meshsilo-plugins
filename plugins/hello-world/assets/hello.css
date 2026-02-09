@@ -1,0 +1,43 @@
+.hello-world-banner {
+    background: linear-gradient(135deg, var(--color-primary), #6366f1);
+    color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.hello-world-banner h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.5rem;
+}
+
+.hello-world-banner p {
+    margin: 0;
+    opacity: 0.9;
+}
+
+.hello-world-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.hello-world-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1.25rem;
+}
+
+.hello-world-card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+    color: var(--color-text);
+}
+
+.hello-world-card p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}

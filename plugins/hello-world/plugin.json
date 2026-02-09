@@ -1,0 +1,12 @@
+{
+    "id": "hello-world",
+    "name": "Hello World",
+    "version": "1.0.0",
+    "description": "A simple test plugin to verify the plugin system is working correctly.",
+    "author": "MeshSilo",
+    "url": "https://github.com/meshsilo/silo-plugins",
+    "license": "MIT",
+    "min_silo_version": "1.0.0",
+    "requires_plugins": [],
+    "provides_features": ["hello_world"]
+}

@@ -1,0 +1,17 @@
+{
+    "name": "MeshSilo Official Plugins",
+    "version": 1,
+    "plugins": [
+        {
+            "id": "hello-world",
+            "name": "Hello World",
+            "description": "A simple test plugin that demonstrates the MeshSilo plugin system. Shows route registration, admin pages, CSS assets, and event hooks.",
+            "version": "1.0.0",
+            "author": "MeshSilo",
+            "min_silo_version": "1.0.0",
+            "download_url": "https://github.com/meshsilo/silo-plugins/releases/download/hello-world-v1.0.0/hello-world.zip",
+            "icon": "puzzle",
+            "category": "Development"
+        }
+    ]
+}
