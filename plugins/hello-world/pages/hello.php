@@ -5,7 +5,7 @@
 $pageTitle = 'Hello World';
 $activePage = '';
 
-require_once __DIR__ . '/../../../../includes/header.php';
+require_once __DIR__ . '/../../../includes/header.php';
 ?>
 
 <div class="container" style="max-width: 800px; margin: 2rem auto; padding: 0 1rem;">
@@ -30,4 +30,4 @@ require_once __DIR__ . '/../../../../includes/header.php';
     </div>
 </div>
 
-<?php require_once __DIR__ . '/../../../../includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../../../includes/footer.php'; ?>
