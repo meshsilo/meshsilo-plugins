@@ -1,0 +1,10 @@
+{
+    "id": "printing",
+    "name": "3D Printing Tools",
+    "description": "Print queue, printer profiles, slicer integration, GCode parsing, cost calculator, and mesh analysis.",
+    "version": "1.0.0",
+    "author": "MeshSilo",
+    "min_silo_version": "1.0.0",
+    "icon": "printer",
+    "category": "Printing"
+}
