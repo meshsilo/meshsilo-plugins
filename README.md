@@ -151,7 +151,3 @@ $plugin->addFilter($hook, $callback, $priority);
 // Apply (from any code)
 $value = PluginManager::applyFilter('hook_name', $originalValue, ...$args);
 ```
-
-## License
-
-MIT
