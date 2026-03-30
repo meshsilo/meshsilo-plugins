@@ -1,121 +1,122 @@
 {
     "name": "MeshSilo Official Plugins",
-    "version": 2,
+    "description": "Official plugin repository for MeshSilo",
+    "url": "https://github.com/meshsilo/meshsilo-plugins",
     "source": {
         "type": "github",
         "repo": "meshsilo/meshsilo-plugins",
-        "branch": "dev"
+        "branch": "main"
     },
     "plugins": [
         {
-            "id": "hello-world",
-            "name": "Hello World",
-            "description": "A simple test plugin that demonstrates the MeshSilo plugin system. Shows route registration, admin pages, CSS assets, and event hooks.",
-            "version": "1.0.0",
-            "author": "MeshSilo",
-            "min_silo_version": "1.0.0",
-            "path": "plugins/hello-world",
-            "icon": "puzzle",
-            "category": "Development"
-        },
-        {
-            "id": "sso",
-            "name": "Single Sign-On",
-            "description": "External authentication via OIDC, SAML, LDAP/AD, SCIM provisioning, and OAuth2 provider.",
-            "version": "1.0.0",
-            "author": "MeshSilo",
-            "min_silo_version": "1.0.0",
-            "path": "plugins/sso",
-            "icon": "unlock",
-            "category": "Authentication"
-        },
-        {
             "id": "analytics",
             "name": "Analytics & Reports",
-            "description": "Usage analytics dashboard, print analytics, scheduled reports, and CLI report generation.",
             "version": "1.0.0",
+            "description": "Dashboard analytics, print statistics, and scheduled report generation with email delivery.",
             "author": "MeshSilo",
+            "category": "Analytics",
             "min_silo_version": "1.0.0",
-            "path": "plugins/analytics",
-            "icon": "activity",
-            "category": "Analytics"
+            "requires_plugins": [],
+            "path": "plugins/analytics"
         },
         {
             "id": "backups",
             "name": "Backups & Cloud",
+            "version": "1.0.0",
             "description": "Database backup and restore with cloud replication support for S3, Dropbox, Google Drive, and OneDrive.",
-            "version": "1.0.0",
             "author": "MeshSilo",
+            "category": "System",
             "min_silo_version": "1.0.0",
-            "path": "plugins/backups",
-            "icon": "archive",
-            "category": "System"
-        },
-        {
-            "id": "retention",
-            "name": "Retention Policies",
-            "description": "Data retention policies, legal holds, automated cleanup, and compliance reporting.",
-            "version": "1.0.0",
-            "author": "MeshSilo",
-            "min_silo_version": "1.0.0",
-            "path": "plugins/retention",
-            "icon": "shield",
-            "category": "Compliance"
+            "requires_plugins": [],
+            "path": "plugins/backups"
         },
         {
             "id": "demo-mode",
             "name": "Demo Mode",
-            "description": "Demo accounts, sample NASA 3D models, and periodic reset for demonstration instances.",
             "version": "1.0.0",
+            "description": "Demo accounts, sample 3D models, and periodic reset for demonstration instances.",
             "author": "MeshSilo",
+            "category": "Development",
             "min_silo_version": "1.0.0",
-            "path": "plugins/demo-mode",
-            "icon": "play-circle",
-            "category": "Development"
+            "requires_plugins": [],
+            "path": "plugins/demo-mode"
         },
         {
-            "id": "rum",
-            "name": "Real User Monitoring",
-            "description": "Client-side performance analytics with Core Web Vitals tracking and browser metrics.",
+            "id": "hello-world",
+            "name": "Hello World",
             "version": "1.0.0",
+            "description": "A simple test plugin to verify the plugin system is working correctly.",
             "author": "MeshSilo",
+            "category": "General",
             "min_silo_version": "1.0.0",
-            "path": "plugins/rum",
-            "icon": "zap",
-            "category": "Analytics"
-        },
-        {
-            "id": "teams",
-            "name": "Teams",
-            "description": "Team collaboration with shared model access, membership management, and invitation system.",
-            "version": "1.0.0",
-            "author": "MeshSilo",
-            "min_silo_version": "1.0.0",
-            "path": "plugins/teams",
-            "icon": "users",
-            "category": "Collaboration"
-        },
-        {
-            "id": "webhooks",
-            "name": "Webhooks",
-            "description": "HTTP webhook notifications for application events with retry support, HMAC-SHA256 signatures, and delivery logging.",
-            "version": "1.0.0",
-            "author": "MeshSilo",
-            "min_silo_version": "1.0.0",
-            "path": "plugins/webhooks",
-            "icon": "link",
-            "category": "Integration"
+            "requires_plugins": [],
+            "path": "plugins/hello-world"
         },
         {
             "id": "printing",
             "name": "3D Printing Tools",
-            "description": "Print queue, printer profiles, slicer integration, GCode parsing, cost calculator, and mesh analysis.",
             "version": "1.0.0",
+            "description": "Print queue, printer profiles, slicer integration, GCode parsing, cost calculator, and mesh analysis.",
             "author": "MeshSilo",
+            "category": "Printing",
             "min_silo_version": "1.0.0",
-            "path": "plugins/printing",
-            "icon": "printer",
-            "category": "Printing"
+            "requires_plugins": [],
+            "path": "plugins/printing"
+        },
+        {
+            "id": "retention",
+            "name": "Retention Policies",
+            "version": "1.0.0",
+            "description": "Automated data retention policies, archiving rules, and legal hold management.",
+            "author": "MeshSilo",
+            "category": "Compliance",
+            "min_silo_version": "1.0.0",
+            "requires_plugins": [],
+            "path": "plugins/retention"
+        },
+        {
+            "id": "rum",
+            "name": "Real User Monitoring",
+            "version": "1.0.0",
+            "description": "Client-side performance monitoring and page load analytics.",
+            "author": "MeshSilo",
+            "category": "Analytics",
+            "min_silo_version": "1.0.0",
+            "requires_plugins": [],
+            "path": "plugins/rum"
+        },
+        {
+            "id": "sso",
+            "name": "Single Sign-On",
+            "version": "1.0.0",
+            "description": "External authentication via OIDC, SAML, LDAP/AD, SCIM provisioning, and OAuth2 provider. Adds SSO buttons to the login page and a unified SSO admin panel.",
+            "author": "MeshSilo",
+            "category": "General",
+            "min_silo_version": "1.0.0",
+            "requires_plugins": [],
+            "path": "plugins/sso"
+        },
+        {
+            "id": "teams",
+            "name": "Teams",
+            "version": "1.0.0",
+            "description": "Team collaboration with shared model access and team invitations.",
+            "author": "MeshSilo",
+            "category": "Collaboration",
+            "min_silo_version": "1.0.0",
+            "requires_plugins": [],
+            "path": "plugins/teams"
+        },
+        {
+            "id": "webhooks",
+            "name": "Webhooks",
+            "version": "1.0.0",
+            "description": "HTTP webhook notifications for application events with retry support.",
+            "author": "MeshSilo",
+            "category": "Integration",
+            "min_silo_version": "1.0.0",
+            "requires_plugins": [],
+            "path": "plugins/webhooks"
         }
     ]
 }
