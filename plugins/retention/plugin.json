@@ -6,5 +6,6 @@
     "author": "MeshSilo",
     "min_silo_version": "1.0.0",
     "icon": "shield",
-    "category": "Compliance"
+    "category": "Compliance",
+    "beta": true
 }

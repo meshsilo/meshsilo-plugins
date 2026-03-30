@@ -49,5 +49,6 @@
             "max": 600,
             "description": "Maximum time allowed for an OpenSCAD render before it is killed."
         }
-    ]
+    ],
+    "beta": true
 }

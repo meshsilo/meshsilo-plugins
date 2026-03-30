@@ -8,5 +8,8 @@
     "license": "MIT",
     "min_silo_version": "1.0.0",
     "requires_plugins": [],
-    "provides_features": ["hello_world"]
+    "provides_features": [
+        "hello_world"
+    ],
+    "beta": true
 }
