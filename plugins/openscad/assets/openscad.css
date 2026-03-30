@@ -1,0 +1,13 @@
+/* OpenSCAD Plugin Styles */
+.openscad-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .openscad-layout {
+        grid-template-columns: 1fr;
+    }
+}

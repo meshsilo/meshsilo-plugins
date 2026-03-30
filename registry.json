@@ -53,6 +53,17 @@
             "path": "plugins/hello-world"
         },
         {
+            "id": "openscad",
+            "name": "OpenSCAD Integration",
+            "version": "1.0.0",
+            "description": "Import OpenSCAD (.scad) files, edit parameters via a visual form, and export as STL or 3MF. Requires OpenSCAD installed on the server or the optional Docker container.",
+            "author": "MeshSilo",
+            "category": "CAD",
+            "min_silo_version": "1.0.0",
+            "requires_plugins": [],
+            "path": "plugins/openscad"
+        },
+        {
             "id": "printing",
             "name": "3D Printing Tools",
             "version": "1.0.0",

@@ -1,0 +1,53 @@
+{
+    "id": "openscad",
+    "name": "OpenSCAD Integration",
+    "version": "1.0.0",
+    "description": "Import OpenSCAD (.scad) files, edit parameters via a visual form, and export as STL or 3MF. Requires OpenSCAD installed on the server or the optional Docker container.",
+    "author": "MeshSilo",
+    "category": "CAD",
+    "min_silo_version": "1.0.0",
+    "requires_plugins": [],
+    "settings": [
+        {
+            "key": "openscad_path",
+            "label": "OpenSCAD Binary Path",
+            "type": "text",
+            "default": "openscad",
+            "description": "Path to the OpenSCAD binary. Use 'openscad' if it's in PATH, or a full path like /usr/bin/openscad."
+        },
+        {
+            "key": "docker_mode",
+            "label": "Use Docker Container",
+            "type": "checkbox",
+            "default": "0",
+            "description": "Execute OpenSCAD via the meshsilo-openscad Docker container instead of a local binary."
+        },
+        {
+            "key": "docker_container",
+            "label": "Docker Container Name",
+            "type": "text",
+            "default": "meshsilo-openscad",
+            "description": "Name of the OpenSCAD Docker container (only used when Docker mode is enabled)."
+        },
+        {
+            "key": "default_export_format",
+            "label": "Default Export Format",
+            "type": "select",
+            "default": "stl",
+            "options": {
+                "stl": "STL",
+                "3mf": "3MF"
+            },
+            "description": "Default output format when rendering OpenSCAD files."
+        },
+        {
+            "key": "render_timeout",
+            "label": "Render Timeout (seconds)",
+            "type": "number",
+            "default": "120",
+            "min": 10,
+            "max": 600,
+            "description": "Maximum time allowed for an OpenSCAD render before it is killed."
+        }
+    ]
+}
