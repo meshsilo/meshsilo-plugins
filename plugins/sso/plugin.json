@@ -1,7 +1,7 @@
 {
     "id": "sso",
     "name": "Single Sign-On",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "External authentication via OIDC, SAML, LDAP/AD, SCIM provisioning, and OAuth2 provider. Adds SSO buttons to the login page and a unified SSO admin panel.",
     "author": "MeshSilo",
     "url": "https://github.com/meshsilo/meshsilo-plugins",
