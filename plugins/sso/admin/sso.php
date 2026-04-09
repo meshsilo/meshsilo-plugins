@@ -215,7 +215,7 @@ while ($row = $result->fetchArray(PDO::FETCH_ASSOC)) {
 // Get OAuth2 clients
 $oauthClients = [];
 if (class_exists('OAuth2Provider')) {
-    $oauthClients = OAuth2Provider::listClients();
+    $oauthClients = OAuth2Provider::getClients();
 }
 
 // Count SSO users (with fallback for missing columns)
