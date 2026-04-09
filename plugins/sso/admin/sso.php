@@ -318,6 +318,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="oidc_enabled" <?= $oidcEnabled ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Enable OIDC Authentication</span>
                 </label>
             </div>
@@ -370,6 +371,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="auto_create" <?= $oidcAutoCreate ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Auto-create users on first login</span>
                 </label>
             </div>
@@ -410,6 +412,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="saml_enabled" <?= $samlEnabled ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Enable SAML Authentication</span>
                 </label>
             </div>
@@ -456,6 +459,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="auto_create" <?= $samlAutoCreate ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Auto-create users on first login</span>
                 </label>
             </div>
@@ -501,6 +505,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="ldap_enabled" <?= $ldapEnabled ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Enable LDAP Authentication</span>
                 </label>
             </div>
@@ -521,6 +526,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="ldap_ssl" <?= $ldapSsl ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Use SSL (LDAPS)</span>
                 </label>
             </div>
@@ -528,6 +534,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="ldap_tls" <?= $ldapTls ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Use StartTLS</span>
                 </label>
             </div>
@@ -574,6 +581,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="auto_create" <?= $ldapAutoCreate ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Auto-create users on first login</span>
                 </label>
             </div>
@@ -609,6 +617,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="scim_enabled" <?= $scimEnabled ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Enable SCIM Provisioning</span>
                 </label>
             </div>
@@ -631,6 +640,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="auto_create" <?= $scimAutoCreate ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Auto-create users</span>
                 </label>
             </div>
@@ -638,6 +648,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="auto_update" <?= $scimAutoUpdate ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Auto-update user attributes</span>
                 </label>
             </div>
@@ -645,6 +656,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="auto_deactivate" <?= $scimAutoDeactivate ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
                     <span>Auto-deactivate removed users</span>
                 </label>
             </div>
@@ -736,6 +748,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="form-group">
                 <label class="toggle-label">
                     <input type="checkbox" name="is_confidential" checked>
+                    <span class="toggle-switch"></span>
                     <span>Confidential Client (server-side app with secret)</span>
                 </label>
             </div>
@@ -875,17 +888,6 @@ require_once __DIR__ . '/../../../includes/header.php';
     margin-bottom: 1.5rem;
 }
 
-.toggle-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-}
-
-.toggle-label input[type="checkbox"] {
-    width: 1rem;
-    height: 1rem;
-}
 
 .empty-state {
     text-align: center;
