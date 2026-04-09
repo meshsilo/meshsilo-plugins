@@ -8,6 +8,36 @@
  */
 
 return [
+    // OIDC columns on users table
+    [
+        'check' => function() {
+            $db = getDB();
+            $type = $db->getType();
+            if ($type === 'mysql') {
+                $stmt = $db->query("SHOW COLUMNS FROM users LIKE 'oidc_id'");
+                return $stmt->fetch() !== false;
+            } else {
+                $stmt = $db->query("PRAGMA table_info(users)");
+                while ($col = $stmt->fetch()) {
+                    if ($col['name'] === 'oidc_id') return true;
+                }
+                return false;
+            }
+        },
+        'apply' => function() {
+            $db = getDB();
+            $type = $db->getType();
+            if ($type === 'mysql') {
+                $db->exec("ALTER TABLE users ADD COLUMN oidc_id VARCHAR(255) DEFAULT NULL");
+                $db->exec("ALTER TABLE users ADD COLUMN oidc_provider VARCHAR(100) DEFAULT NULL");
+                $db->exec("CREATE INDEX idx_users_oidc ON users(oidc_id)");
+            } else {
+                $db->exec("ALTER TABLE users ADD COLUMN oidc_id TEXT DEFAULT NULL");
+                $db->exec("ALTER TABLE users ADD COLUMN oidc_provider TEXT DEFAULT NULL");
+                $db->exec("CREATE INDEX IF NOT EXISTS idx_users_oidc ON users(oidc_id)");
+            }
+        },
+    ],
     // SAML columns on users table
     [
         'check' => function() {
