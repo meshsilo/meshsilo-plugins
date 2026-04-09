@@ -8,10 +8,10 @@
  * Check if OIDC is enabled and properly configured
  */
 function isOIDCEnabled() {
-    return getSetting('oidc_enabled', '0') === '1'
-        && !empty(getSetting('oidc_provider_url'))
-        && !empty(getSetting('oidc_client_id'))
-        && !empty(getSetting('oidc_client_secret'));
+    if (getSetting('oidc_enabled', '0') !== '1') return false;
+    if (empty(getSetting('oidc_client_id')) || empty(getSetting('oidc_client_secret'))) return false;
+    // Either provider URL (auto-discovery) or manual auth URL must be set
+    return !empty(getSetting('oidc_provider_url')) || !empty(getSetting('oidc_auth_url'));
 }
 
 /**
@@ -56,8 +56,18 @@ function isOIDCAutoRegisterEnabled() {
 function getOIDCConfig() {
     $providerUrl = rtrim(getSetting('oidc_provider_url', ''), '/');
 
+    // Fall back to manually configured URLs if no provider URL for auto-discovery
     if (empty($providerUrl)) {
-        return null;
+        $authUrl = getSetting('oidc_auth_url', '');
+        if (empty($authUrl)) {
+            return null;
+        }
+        return [
+            'authorization_endpoint' => $authUrl,
+            'token_endpoint' => getSetting('oidc_token_url', ''),
+            'userinfo_endpoint' => getSetting('oidc_userinfo_url', ''),
+            'issuer' => $authUrl,
+        ];
     }
 
     $discoveryUrl = $providerUrl . '/.well-known/openid-configuration';
