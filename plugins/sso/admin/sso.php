@@ -56,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             setSetting('oidc_token_url', trim($_POST['token_url'] ?? ''));
             setSetting('oidc_userinfo_url', trim($_POST['userinfo_url'] ?? ''));
             setSetting('oidc_scopes', trim($_POST['scopes'] ?? 'openid profile email'));
+            setSetting('oidc_token_auth_method', $_POST['token_auth_method'] ?? 'client_secret_basic');
             setSetting('oidc_auto_create_users', isset($_POST['auto_create']) ? '1' : '0');
             setSetting('oidc_default_group', $_POST['default_group'] ?? '');
             $message = 'OIDC settings saved.';
@@ -173,6 +174,7 @@ $oidcAuthUrl = getSetting('oidc_auth_url', '');
 $oidcTokenUrl = getSetting('oidc_token_url', '');
 $oidcUserinfoUrl = getSetting('oidc_userinfo_url', '');
 $oidcScopes = getSetting('oidc_scopes', 'openid profile email');
+$oidcTokenAuthMethod = getSetting('oidc_token_auth_method', 'client_secret_basic');
 $oidcAutoCreate = getSetting('oidc_auto_create_users', '1') === '1';
 $oidcDefaultGroup = getSetting('oidc_default_group', '');
 
@@ -366,6 +368,15 @@ require_once __DIR__ . '/../../../includes/header.php';
                 <label>Scopes</label>
                 <input type="text" name="scopes" class="form-input" value="<?= htmlspecialchars($oidcScopes) ?>">
                 <small>Space-separated list of scopes</small>
+            </div>
+
+            <div class="form-group">
+                <label>Token Authentication Method</label>
+                <select name="token_auth_method" class="form-input">
+                    <option value="client_secret_basic" <?= $oidcTokenAuthMethod === 'client_secret_basic' ? 'selected' : '' ?>>HTTP Basic Auth (client_secret_basic)</option>
+                    <option value="client_secret_post" <?= $oidcTokenAuthMethod === 'client_secret_post' ? 'selected' : '' ?>>POST Body (client_secret_post)</option>
+                </select>
+                <small>How client credentials are sent to the token endpoint. Most providers use Basic Auth.</small>
             </div>
 
             <div class="form-group">

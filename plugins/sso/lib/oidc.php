@@ -259,18 +259,32 @@ function exchangeCodeForTokens($code) {
     $clientId = getSetting('oidc_client_id');
     $clientSecret = getSetting('oidc_client_secret');
     $redirectUri = getOIDCRedirectUri();
+    $authMethod = getSetting('oidc_token_auth_method', 'client_secret_basic');
 
     $postData = [
         'grant_type' => 'authorization_code',
         'code' => $code,
         'redirect_uri' => $redirectUri,
-        'client_id' => $clientId,
-        'client_secret' => $clientSecret
     ];
 
     // Add PKCE code verifier if used
     if (isset($_SESSION['oidc_code_verifier'])) {
         $postData['code_verifier'] = $_SESSION['oidc_code_verifier'];
+    }
+
+    $headers = [
+        'Content-Type: application/x-www-form-urlencoded',
+        'Accept: application/json',
+        'User-Agent: Silo/1.0'
+    ];
+
+    if ($authMethod === 'client_secret_post') {
+        // Send credentials in POST body
+        $postData['client_id'] = $clientId;
+        $postData['client_secret'] = $clientSecret;
+    } else {
+        // Default: HTTP Basic authentication (client_secret_basic)
+        $headers[] = 'Authorization: Basic ' . base64_encode($clientId . ':' . $clientSecret);
     }
 
     $ch = curl_init($config['token_endpoint']);
@@ -282,11 +296,7 @@ function exchangeCodeForTokens($code) {
         CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/x-www-form-urlencoded',
-            'Accept: application/json',
-            'User-Agent: Silo/1.0'
-        ]
+        CURLOPT_HTTPHEADER => $headers
     ]);
 
     $response = curl_exec($ch);
