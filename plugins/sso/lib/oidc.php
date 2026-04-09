@@ -222,11 +222,10 @@ function getOIDCRedirectUri() {
         return $configuredUri;
     }
 
-    // Build from site URL or current request
+    // Use site_url if configured (important for reverse proxy setups)
     $siteUrl = getSetting('site_url', '');
-
-    if (!empty($siteUrl) && getSetting('force_site_url', '0') === '1') {
-        return rtrim($siteUrl, '/') . '/oidc-callback.php';
+    if (!empty($siteUrl)) {
+        return rtrim($siteUrl, '/') . '/oidc-callback';
     }
 
     // Auto-detect from request
@@ -244,13 +243,7 @@ function getOIDCRedirectUri() {
         $host = $_SERVER['HTTP_X_FORWARDED_HOST'];
     }
 
-    // Get base path
-    $basePath = dirname($_SERVER['SCRIPT_NAME']);
-    if ($basePath === '/' || $basePath === '\\') {
-        $basePath = '';
-    }
-
-    return $protocol . '://' . $host . $basePath . '/oidc-callback.php';
+    return $protocol . '://' . $host . '/oidc-callback';
 }
 
 /**
@@ -688,7 +681,7 @@ function getOIDCLogoutUrl($idToken = null) {
     if (empty($postLogoutUri)) {
         $siteUrl = getSetting('site_url', '');
         if (!empty($siteUrl)) {
-            $postLogoutUri = rtrim($siteUrl, '/') . '/login.php';
+            $postLogoutUri = rtrim($siteUrl, '/') . '/login';
         }
     }
 
