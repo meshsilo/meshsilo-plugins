@@ -47,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
         case 'save_oidc':
             setSetting('oidc_enabled', isset($_POST['oidc_enabled']) ? '1' : '0');
             setSetting('oidc_provider_name', trim($_POST['provider_name'] ?? 'SSO'));
+            setSetting('oidc_provider_url', trim($_POST['provider_url'] ?? ''));
             setSetting('oidc_client_id', trim($_POST['client_id'] ?? ''));
             if (!empty($_POST['client_secret'])) {
                 setSetting('oidc_client_secret', $_POST['client_secret']);
@@ -166,6 +167,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
 // Get current settings
 $oidcEnabled = getSetting('oidc_enabled', '0') === '1';
 $oidcProviderName = getSetting('oidc_provider_name', 'SSO');
+$oidcProviderUrl = getSetting('oidc_provider_url', '');
 $oidcClientId = getSetting('oidc_client_id', '');
 $oidcAuthUrl = getSetting('oidc_auth_url', '');
 $oidcTokenUrl = getSetting('oidc_token_url', '');
@@ -324,6 +326,12 @@ require_once __DIR__ . '/../../../includes/header.php';
                 <label>Provider Name</label>
                 <input type="text" name="provider_name" class="form-input" value="<?= htmlspecialchars($oidcProviderName) ?>" placeholder="e.g., Google, Azure AD">
                 <small>Displayed on the login button</small>
+            </div>
+
+            <div class="form-group">
+                <label>Provider URL (Issuer)</label>
+                <input type="url" name="provider_url" class="form-input" value="<?= htmlspecialchars($oidcProviderUrl) ?>" placeholder="https://accounts.google.com or https://login.microsoftonline.com/{tenant}/v2.0">
+                <small>The OpenID Connect issuer URL. Used for auto-discovery of endpoints via <code>.well-known/openid-configuration</code></small>
             </div>
 
             <div class="form-row">
