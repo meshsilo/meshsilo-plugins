@@ -58,6 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !Csrf::check()) {
             setSetting('oidc_scopes', trim($_POST['scopes'] ?? 'openid profile email'));
             setSetting('oidc_token_auth_method', $_POST['token_auth_method'] ?? 'client_secret_basic');
             setSetting('oidc_auto_create_users', isset($_POST['auto_create']) ? '1' : '0');
+            setSetting('oidc_single_logout', isset($_POST['single_logout']) ? '1' : '0');
             setSetting('oidc_default_group', $_POST['default_group'] ?? '');
             $message = 'OIDC settings saved.';
             logActivity('oidc_settings_updated', 'system', null, 'Admin updated OIDC settings');
@@ -176,6 +177,7 @@ $oidcUserinfoUrl = getSetting('oidc_userinfo_url', '');
 $oidcScopes = getSetting('oidc_scopes', 'openid profile email');
 $oidcTokenAuthMethod = getSetting('oidc_token_auth_method', 'client_secret_basic');
 $oidcAutoCreate = getSetting('oidc_auto_create_users', '1') === '1';
+$oidcSingleLogout = getSetting('oidc_single_logout', '0') === '1';
 $oidcDefaultGroup = getSetting('oidc_default_group', '');
 
 $samlEnabled = getSetting('saml_enabled', '0') === '1';
@@ -385,6 +387,15 @@ require_once __DIR__ . '/../../../includes/header.php';
                     <span class="toggle-switch"></span>
                     <span>Auto-create users on first login</span>
                 </label>
+            </div>
+
+            <div class="form-group">
+                <label class="toggle-label">
+                    <input type="checkbox" name="single_logout" <?= $oidcSingleLogout ? 'checked' : '' ?>>
+                    <span class="toggle-switch"></span>
+                    <span>Enable Single Logout</span>
+                </label>
+                <small>When logging out, also log out of the OIDC provider. Only enable if your provider supports <code>end_session_endpoint</code> and you have registered this site's <code>/login</code> URL as a post-logout redirect URI.</small>
             </div>
 
             <div class="form-group">

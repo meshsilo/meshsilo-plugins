@@ -58,7 +58,8 @@ $plugin->addFilter('logout_redirect', function($redirectUrl, $userId, $preLogout
     }
 
     $wasOIDCUser = !empty($preLogoutData['user']['oidc_id']) || !empty($preLogoutData['oidc_id_token']);
-    $oidcSingleLogout = getSetting('oidc_single_logout', '1') === '1';
+    // Single logout is opt-in — the provider's post_logout_redirect_uri must be registered
+    $oidcSingleLogout = getSetting('oidc_single_logout', '0') === '1';
 
     if ($wasOIDCUser && $oidcSingleLogout) {
         $idToken = $preLogoutData['oidc_id_token'] ?? null;
