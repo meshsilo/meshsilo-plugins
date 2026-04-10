@@ -13,6 +13,7 @@ require_once $pluginDir . '/lib/SingleSignOut.php';
 require_once $pluginDir . '/lib/OAuth2Provider.php';
 
 // Register SSO callback/metadata routes
+$plugin->addRoute('GET', '/oidc-login', ['file' => $pluginDir . '/pages/oidc-login.php'], 'oidc.login');
 $plugin->addRoute('GET', '/oidc-callback', ['file' => $pluginDir . '/pages/oidc-callback.php'], 'oidc.callback');
 $plugin->addRoute('POST', '/saml-acs', ['file' => $pluginDir . '/pages/saml-acs.php'], 'saml.acs');
 $plugin->addRoute('GET', '/saml-metadata', ['file' => $pluginDir . '/pages/saml-metadata.php'], 'saml.metadata');
@@ -31,10 +32,10 @@ $plugin->addAdminMenuItem('Users & Auth', 'Single Sign-On', 'sso', 'admin.sso');
 
 // Filter: Add SSO buttons to login page
 $plugin->addFilter('login_buttons', function($buttons) {
-    // OIDC button
+    // OIDC button — link to /oidc-login so state is generated fresh at click time
     if (function_exists('isOIDCEnabled') && isOIDCEnabled()) {
         $buttons[] = [
-            'url' => getOIDCAuthUrl(),
+            'url' => '/oidc-login',
             'text' => getSetting('oidc_button_text', 'Sign in with SSO'),
             'class' => 'btn-oidc',
         ];
@@ -72,6 +73,7 @@ $plugin->addFilter('logout_redirect', function($redirectUrl, $userId, $preLogout
 
 // Filter: Register SSO callback routes as public (no auth required)
 $plugin->addFilter('public_routes', function($routes) {
+    $routes[] = '/oidc-login';
     $routes[] = '/oidc-callback';
     $routes[] = '/saml-acs';
     $routes[] = '/saml-metadata';
@@ -80,6 +82,7 @@ $plugin->addFilter('public_routes', function($routes) {
 
 // Filter: Allow SSO callbacks during maintenance mode
 $plugin->addFilter('maintenance_bypass_routes', function($routes) {
+    $routes[] = '/oidc-login';
     $routes[] = '/oidc-callback';
     $routes[] = '/saml-acs';
     return $routes;
