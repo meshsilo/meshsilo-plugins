@@ -578,30 +578,51 @@ function findOrCreateOIDCUser($userInfo, $idToken = null) {
         return $user;
     }
 
-    // Check if user exists with same email
+    // Check if user exists with same email or username
+    $existingUser = null;
+    $matchedBy = null;
+
     if ($email) {
         $stmt = $db->prepare('SELECT * FROM users WHERE email = :email');
         $stmt->execute([':email' => $email]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($user) {
-            // Check if linking existing accounts is allowed
-            if (getSetting('oidc_link_existing', '1') !== '1') {
-                logWarning('OIDC account linking disabled', ['email' => $email]);
-                return null;
-            }
-
-            // Link existing account to OIDC
-            $stmt = $db->prepare('UPDATE users SET oidc_id = :oidc_id WHERE id = :id');
-            $stmt->execute([':oidc_id' => $sub, ':id' => $user['id']]);
-            $user['oidc_id'] = $sub;
-
-            // Map groups if configured
-            mapOIDCGroupsToSilo($userInfo, $user['id']);
-
-            logInfo('OIDC linked to existing user', ['user_id' => $user['id'], 'email' => $email]);
-            return $user;
+        $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($existingUser) {
+            $matchedBy = 'email';
         }
+    }
+
+    // Fall back to username match if no email match
+    if (!$existingUser && $name) {
+        $stmt = $db->prepare('SELECT * FROM users WHERE username = :username');
+        $stmt->execute([':username' => $name]);
+        $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($existingUser) {
+            $matchedBy = 'username';
+        }
+    }
+
+    if ($existingUser) {
+        // Check if linking existing accounts is allowed
+        if (getSetting('oidc_link_existing', '1') !== '1') {
+            logWarning('OIDC account linking disabled', ['email' => $email, 'username' => $name]);
+            return null;
+        }
+
+        // Link existing account to OIDC
+        $stmt = $db->prepare('UPDATE users SET oidc_id = :oidc_id WHERE id = :id');
+        $stmt->execute([':oidc_id' => $sub, ':id' => $existingUser['id']]);
+        $existingUser['oidc_id'] = $sub;
+
+        // Map groups if configured
+        mapOIDCGroupsToSilo($userInfo, $existingUser['id']);
+
+        logInfo('OIDC linked to existing user', [
+            'user_id' => $existingUser['id'],
+            'matched_by' => $matchedBy,
+            'email' => $email,
+            'username' => $name,
+        ]);
+        return $existingUser;
     }
 
     // Check if auto-registration is enabled
