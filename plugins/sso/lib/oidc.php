@@ -557,18 +557,27 @@ function findOrCreateOIDCUser($userInfo, $idToken = null) {
     $email = $userInfo['email'] ?? null;
     $name = extractOIDCUsername($userInfo);
 
+    // Normalized copies for comparison. Email is always case-insensitive per
+    // RFC 5321; the provider may send mixed case but the stored row should
+    // not be a different user just because of that. Username comparisons are
+    // also forced to lowercase to catch "Azurith93" vs "azurith93" on the
+    // default SQLite BINARY collation.
+    $normalizedEmail = is_string($email) ? strtolower(trim($email)) : null;
+
     // First, check if we have a user with this OIDC ID
     $stmt = $db->prepare('SELECT * FROM users WHERE oidc_id = :oidc_id');
     $stmt->execute([':oidc_id' => $sub]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user) {
-        // Update email if changed and email is verified
+        // Update email if changed and email is verified. Compare normalized
+        // forms so a pure case/whitespace change doesn't churn the row.
         $emailVerified = $userInfo['email_verified'] ?? true;
-        if ($email && $emailVerified && $email !== $user['email']) {
+        if ($normalizedEmail && $emailVerified
+            && $normalizedEmail !== strtolower(trim((string)($user['email'] ?? '')))) {
             $stmt = $db->prepare('UPDATE users SET email = :email WHERE id = :id');
-            $stmt->execute([':email' => $email, ':id' => $user['id']]);
-            $user['email'] = $email;
+            $stmt->execute([':email' => $normalizedEmail, ':id' => $user['id']]);
+            $user['email'] = $normalizedEmail;
         }
 
         // Map groups if configured
@@ -582,19 +591,36 @@ function findOrCreateOIDCUser($userInfo, $idToken = null) {
     $existingUser = null;
     $matchedBy = null;
 
-    if ($email) {
-        $stmt = $db->prepare('SELECT * FROM users WHERE email = :email');
-        $stmt->execute([':email' => $email]);
+    if ($normalizedEmail) {
+        // Case/whitespace-insensitive match. Without the LOWER() wrappers
+        // the query misses existing users whose stored email differs from
+        // the provider's claim only in case ("Azurith93@gmail.com" vs the
+        // stored "azurith93@gmail.com").
+        $stmt = $db->prepare('SELECT * FROM users WHERE LOWER(TRIM(email)) = :email');
+        $stmt->execute([':email' => $normalizedEmail]);
         $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($existingUser) {
             $matchedBy = 'email';
         }
     }
 
-    // Fall back to username match if no email match
+    // Fall back to username match if no email match.
+    //
+    // The username is matched on TWO forms: the raw claim and the strict
+    // alphanumeric-only form that the creation path below would use as
+    // `$baseUsername`. Without the strict form, a claim like "azurith-93"
+    // misses an existing "azurith93" here but still collides during the
+    // collision-avoidance loop, which would then create "azurith931". Both
+    // comparisons are case-insensitive for the same reason as the email
+    // match above.
     if (!$existingUser && $name) {
-        $stmt = $db->prepare('SELECT * FROM users WHERE username = :username');
-        $stmt->execute([':username' => $name]);
+        $strictName = preg_replace('/[^a-zA-Z0-9_]/', '', $name);
+        $stmt = $db->prepare(
+            'SELECT * FROM users
+             WHERE LOWER(username) = LOWER(:raw)
+                OR LOWER(username) = LOWER(:strict)'
+        );
+        $stmt->execute([':raw' => $name, ':strict' => $strictName]);
         $existingUser = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($existingUser) {
             $matchedBy = 'username';
@@ -664,7 +690,7 @@ function findOrCreateOIDCUser($userInfo, $idToken = null) {
     $stmt = $db->prepare('INSERT INTO users (username, email, password, oidc_id, is_admin) VALUES (:username, :email, :password, :oidc_id, 0)');
     $stmt->execute([
         ':username' => $username,
-        ':email' => $email ?? $username . '@oidc.local',
+        ':email' => $normalizedEmail ?? $username . '@oidc.local',
         ':password' => $randomPassword,
         ':oidc_id' => $sub
     ]);
