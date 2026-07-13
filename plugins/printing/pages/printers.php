@@ -70,6 +70,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <div class="printer-actions">
                 <?php if (!$printer['is_default']): ?>
                 <form method="post" action="/actions/printer" style="display:inline;">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="set_default">
                     <input type="hidden" name="printer_id" value="<?= $printer['id'] ?>">
                     <button type="submit" class="btn btn-secondary btn-sm">Set as Default</button>
@@ -92,6 +93,7 @@ require_once __DIR__ . '/../../../includes/header.php';
             <button class="modal-close" onclick="closeModal()">&times;</button>
         </div>
         <form id="printer-form" method="post" action="/actions/printer">
+            <?= csrf_field() ?>
             <input type="hidden" name="action" id="form-action" value="create">
             <input type="hidden" name="printer_id" id="printer-id">
 
@@ -148,6 +150,13 @@ require_once __DIR__ . '/../../../includes/header.php';
         </form>
     </div>
 </div>
+
+<!-- Hidden form for printer deletion (carries CSRF token) -->
+<form id="delete-printer-form" method="post" action="/actions/printer" style="display:none;">
+    <?= csrf_field() ?>
+    <input type="hidden" name="action" value="delete">
+    <input type="hidden" name="printer_id" id="delete-printer-id">
+</form>
 
 <style>
 .printers-grid {
@@ -247,12 +256,8 @@ function editPrinter(printer) {
 function deletePrinter(printerId) {
     if (!confirm('Delete this printer?')) return;
 
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/actions/printer';
-    form.innerHTML = `<input type="hidden" name="action" value="delete"><input type="hidden" name="printer_id" value="${printerId}">`;
-    document.body.appendChild(form);
-    form.submit();
+    document.getElementById('delete-printer-id').value = printerId;
+    document.getElementById('delete-printer-form').submit();
 }
 
 function closeModal() {

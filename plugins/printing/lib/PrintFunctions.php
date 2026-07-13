@@ -20,7 +20,11 @@ function isInPrintQueue($userId, $modelId) {
 function addToPrintQueue($userId, $modelId, $priority = 0, $notes = '') {
     try {
         $db = getDB();
-        $stmt = $db->prepare('INSERT OR REPLACE INTO print_queue (user_id, model_id, priority, notes) VALUES (:user_id, :model_id, :priority, :notes)');
+        if (isInPrintQueue($userId, $modelId)) {
+            $stmt = $db->prepare('UPDATE print_queue SET priority = :priority, notes = :notes WHERE user_id = :user_id AND model_id = :model_id');
+        } else {
+            $stmt = $db->prepare('INSERT INTO print_queue (user_id, model_id, priority, notes) VALUES (:user_id, :model_id, :priority, :notes)');
+        }
         $stmt->execute([
             ':user_id' => $userId,
             ':model_id' => $modelId,

@@ -8,22 +8,12 @@
 require_once __DIR__ . '/../../../includes/config.php';
 require_once __DIR__ . '/../../../includes/features.php';
 
-header('Content-Type: application/json');
+printingRequireFeature('printers', 'Printers');
+$user = printingRequireLogin();
 
-// Check if printers feature is enabled
-if (!isFeatureEnabled('printers')) {
-    http_response_code(403);
-    echo json_encode(['success' => false, 'error' => 'Printers feature is disabled']);
-    exit;
-}
-
-if (!isLoggedIn()) {
-    echo json_encode(['success' => false, 'error' => 'Not logged in']);
-    exit;
-}
-
-$user = getCurrentUser();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+printingRequireCsrf($action, ['create', 'update', 'delete', 'set_default']);
 
 switch ($action) {
     case 'create':
@@ -48,11 +38,11 @@ switch ($action) {
         checkModelFit();
         break;
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        printingFail('Invalid action');
 }
 
 function createPrinter() {
-    global $user;
+    $user = getCurrentUser();
 
     $name = trim($_POST['name'] ?? '');
     $manufacturer = trim($_POST['manufacturer'] ?? '');
@@ -64,8 +54,7 @@ function createPrinter() {
     $notes = trim($_POST['notes'] ?? '');
 
     if (empty($name)) {
-        echo json_encode(['success' => false, 'error' => 'Printer name required']);
-        return;
+        printingFail('Printer name required');
     }
 
     $db = getDB();
@@ -85,34 +74,19 @@ function createPrinter() {
         ':notes' => $notes
     ]);
 
-    $printerId = $db->lastInsertId();
-
-    echo json_encode([
-        'success' => true,
-        'printer_id' => $printerId
-    ]);
+    printingOk(['printer_id' => $db->lastInsertId()]);
 }
 
 function updatePrinter() {
-    global $user;
+    $user = getCurrentUser();
 
     $printerId = (int)($_POST['printer_id'] ?? 0);
     if (!$printerId) {
-        echo json_encode(['success' => false, 'error' => 'Printer ID required']);
-        return;
+        printingFail('Printer ID required');
     }
 
     $db = getDB();
-
-    // Verify ownership
-    $stmt = $db->prepare('SELECT user_id FROM printers WHERE id = :id');
-    $stmt->execute([':id' => $printerId]);
-    $printer = $stmt->fetch();
-
-    if (!$printer || ($printer['user_id'] !== $user['id'] && !$user['is_admin'])) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
-        return;
-    }
+    printingRequireOwnedPrinter($db, $printerId, $user);
 
     $updates = [];
     $params = [':id' => $printerId];
@@ -126,46 +100,35 @@ function updatePrinter() {
     }
 
     if (empty($updates)) {
-        echo json_encode(['success' => false, 'error' => 'No fields to update']);
-        return;
+        printingFail('No fields to update');
     }
 
     $sql = 'UPDATE printers SET ' . implode(', ', $updates) . ' WHERE id = :id';
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
 
-    echo json_encode(['success' => true]);
+    printingOk();
 }
 
 function deletePrinter() {
-    global $user;
+    $user = getCurrentUser();
 
     $printerId = (int)($_POST['printer_id'] ?? 0);
     if (!$printerId) {
-        echo json_encode(['success' => false, 'error' => 'Printer ID required']);
-        return;
+        printingFail('Printer ID required');
     }
 
     $db = getDB();
-
-    // Verify ownership
-    $stmt = $db->prepare('SELECT user_id FROM printers WHERE id = :id');
-    $stmt->execute([':id' => $printerId]);
-    $printer = $stmt->fetch();
-
-    if (!$printer || ($printer['user_id'] !== $user['id'] && !$user['is_admin'])) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
-        return;
-    }
+    printingRequireOwnedPrinter($db, $printerId, $user);
 
     $stmt = $db->prepare('DELETE FROM printers WHERE id = :id');
     $stmt->execute([':id' => $printerId]);
 
-    echo json_encode(['success' => true]);
+    printingOk();
 }
 
 function listPrinters() {
-    global $user;
+    $user = getCurrentUser();
 
     $db = getDB();
     $stmt = $db->prepare('
@@ -180,16 +143,15 @@ function listPrinters() {
         $printers[] = $row;
     }
 
-    echo json_encode(['success' => true, 'printers' => $printers]);
+    printingOk(['printers' => $printers]);
 }
 
 function getPrinter() {
-    global $user;
+    $user = getCurrentUser();
 
     $printerId = (int)($_GET['printer_id'] ?? 0);
     if (!$printerId) {
-        echo json_encode(['success' => false, 'error' => 'Printer ID required']);
-        return;
+        printingFail('Printer ID required');
     }
 
     $db = getDB();
@@ -198,20 +160,18 @@ function getPrinter() {
     $printer = $stmt->fetch();
 
     if (!$printer) {
-        echo json_encode(['success' => false, 'error' => 'Printer not found']);
-        return;
+        printingFail('Printer not found', 404);
     }
 
-    echo json_encode(['success' => true, 'printer' => $printer]);
+    printingOk(['printer' => $printer]);
 }
 
 function setDefaultPrinter() {
-    global $user;
+    $user = getCurrentUser();
 
     $printerId = (int)($_POST['printer_id'] ?? 0);
     if (!$printerId) {
-        echo json_encode(['success' => false, 'error' => 'Printer ID required']);
-        return;
+        printingFail('Printer ID required');
     }
 
     $db = getDB();
@@ -224,16 +184,17 @@ function setDefaultPrinter() {
     $stmt = $db->prepare('UPDATE printers SET is_default = 1 WHERE id = :id AND user_id = :user_id');
     $stmt->execute([':id' => $printerId, ':user_id' => $user['id']]);
 
-    echo json_encode(['success' => true]);
+    printingOk();
 }
 
 function checkModelFit() {
+    $user = getCurrentUser();
+
     $modelId = (int)($_GET['model_id'] ?? 0);
     $printerId = (int)($_GET['printer_id'] ?? 0);
 
     if (!$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
-        return;
+        printingFail('Model ID required');
     }
 
     $db = getDB();
@@ -244,25 +205,22 @@ function checkModelFit() {
     $model = $stmt->fetch();
 
     if (!$model || !$model['dim_x']) {
-        echo json_encode(['success' => false, 'error' => 'Model dimensions not available']);
-        return;
+        printingFail('Model dimensions not available');
     }
 
-    // Get printer
+    // Get printer (scoped to the requesting user or shared printers to prevent IDOR)
     if ($printerId) {
-        $stmt = $db->prepare('SELECT * FROM printers WHERE id = :id');
-        $stmt->execute([':id' => $printerId]);
+        $stmt = $db->prepare('SELECT * FROM printers WHERE id = :id AND (user_id = :user_id OR user_id IS NULL)');
+        $stmt->execute([':id' => $printerId, ':user_id' => $user['id']]);
     } else {
         // Get default printer
-        global $user;
         $stmt = $db->prepare('SELECT * FROM printers WHERE user_id = :user_id AND is_default = 1');
         $stmt->execute([':user_id' => $user['id']]);
     }
     $printer = $stmt->fetch();
 
     if (!$printer || !$printer['bed_x']) {
-        echo json_encode(['success' => false, 'error' => 'Printer bed dimensions not available']);
-        return;
+        printingFail('Printer bed dimensions not available');
     }
 
     // Convert to same unit (mm)
@@ -304,8 +262,7 @@ function checkModelFit() {
         $margins['z'] = $printer['bed_z'] - $modelDims['z'];
     }
 
-    echo json_encode([
-        'success' => true,
+    printingOk([
         'fits' => $fits,
         'model_dimensions' => $modelDims,
         'printer_dimensions' => [

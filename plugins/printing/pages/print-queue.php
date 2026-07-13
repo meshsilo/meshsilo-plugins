@@ -24,12 +24,15 @@ $queue = getUserPrintQueue($user['id'], 100);
 
 // Enhance models with preview data
 foreach ($queue as &$model) {
-    $modelData = $db->query("SELECT id, part_count, file_type FROM models WHERE id = " . (int)$model['model_id'])->fetchArray(PDO::FETCH_ASSOC);
+    $modelStmt = $db->prepare('SELECT id, part_count, file_type FROM models WHERE id = :id');
+    $modelStmt->bindValue(':id', (int)$model['model_id'], PDO::PARAM_INT);
+    $modelStmt->execute();
+    $modelData = $modelStmt->fetch(PDO::FETCH_ASSOC);
     if ($modelData && $modelData['part_count'] > 0) {
         $partStmt = $db->prepare('SELECT id, file_type FROM models WHERE parent_id = :parent_id ORDER BY original_path ASC LIMIT 1');
         $partStmt->bindValue(':parent_id', $model['model_id'], PDO::PARAM_INT);
-        $partResult = $partStmt->execute();
-        $firstPart = $partResult->fetchArray(PDO::FETCH_ASSOC);
+        $partStmt->execute();
+        $firstPart = $partStmt->fetch(PDO::FETCH_ASSOC);
         if ($firstPart) {
             $model['preview_path'] = '/actions/preview?id=' . $firstPart['id'];
             $model['preview_type'] = $firstPart['file_type'];
@@ -112,12 +115,16 @@ require_once __DIR__ . '/../../../includes/header.php';
         </div>
 
         <script>
+        function queueCsrfSuffix() {
+            return (typeof printingCsrfBody === 'function' && printingCsrfBody()) ? '&' + printingCsrfBody() : '';
+        }
+
         async function removeFromQueue(modelId, btn) {
             try {
                 const response = await fetch('/actions/print-queue', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=remove&model_id=' + modelId
+                    body: 'action=remove&model_id=' + encodeURIComponent(modelId) + queueCsrfSuffix()
                 });
                 const data = await response.json();
                 if (data.success) {
@@ -134,7 +141,7 @@ require_once __DIR__ . '/../../../includes/header.php';
                 await fetch('/actions/print-queue', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=priority&model_id=' + modelId + '&priority=' + priority
+                    body: 'action=priority&model_id=' + encodeURIComponent(modelId) + '&priority=' + encodeURIComponent(priority) + queueCsrfSuffix()
                 });
             } catch (err) {
                 console.error('Failed to update priority:', err);
@@ -147,7 +154,7 @@ require_once __DIR__ . '/../../../includes/header.php';
                 const response = await fetch('/actions/print-queue', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=clear'
+                    body: 'action=clear' + queueCsrfSuffix()
                 });
                 const data = await response.json();
                 if (data.success) {

@@ -8,24 +8,10 @@
 
 require_once __DIR__ . '/../../../includes/config.php';
 
-header('Content-Type: application/json');
-
-if (!isLoggedIn()) {
-    echo json_encode(['success' => false, 'error' => 'Not logged in']);
-    exit;
-}
-
-$user = getCurrentUser();
+$user = printingRequireLogin();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
-// CSRF validation for state-changing actions
-if (in_array($action, ['upload', 'delete', 'set_primary'])) {
-    if (!Csrf::check()) {
-        http_response_code(403);
-        echo json_encode(['success' => false, 'error' => 'Invalid request token']);
-        exit;
-    }
-}
+printingRequireCsrf($action, ['upload', 'delete', 'set_primary']);
 
 switch ($action) {
     case 'upload':
@@ -41,51 +27,42 @@ switch ($action) {
         listPrintPhotos();
         break;
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        printingFail('Invalid action');
 }
 
 function uploadPrintPhoto() {
-    global $user;
+    $user = getCurrentUser();
 
     $modelId = (int)($_POST['model_id'] ?? 0);
     $caption = trim($_POST['caption'] ?? '');
 
     if (!$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
-        return;
+        printingFail('Model ID required');
     }
 
-    // Verify model ownership
     $db = getDB();
-    $stmt = $db->prepare('SELECT user_id, uploaded_by FROM models WHERE id = :id');
-    $stmt->execute([':id' => $modelId]);
-    $model = $stmt->fetch();
-
-    if (!$model) {
-        echo json_encode(['success' => false, 'error' => 'Model not found']);
-        return;
-    }
-
-    $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
-    if ($ownerId && $ownerId != $user['id'] && !$user['is_admin'] && !canEdit()) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
-        return;
-    }
+    printingRequireModelOwner($db, $modelId, $user);
 
     if (empty($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
-        echo json_encode(['success' => false, 'error' => 'No photo uploaded']);
-        return;
+        printingFail('No photo uploaded');
     }
 
     $file = $_FILES['photo'];
-    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    // Map of accepted MIME types to their canonical extensions. The stored
+    // extension is derived from the finfo-validated MIME, never the
+    // attacker-controlled client filename (prevents polyglot .php uploads).
+    $mimeToExt = [
+        'image/jpeg' => 'jpg',
+        'image/png'  => 'png',
+        'image/gif'  => 'gif',
+        'image/webp' => 'webp',
+    ];
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $mimeType = finfo_file($finfo, $file['tmp_name']);
     finfo_close($finfo);
 
-    if (!in_array($mimeType, $allowedTypes)) {
-        echo json_encode(['success' => false, 'error' => 'Invalid image type. Allowed: JPG, PNG, GIF, WebP']);
-        return;
+    if (!isset($mimeToExt[$mimeType])) {
+        printingFail('Invalid image type. Allowed: JPG, PNG, GIF, WebP');
     }
 
     // Create photos directory if needed
@@ -94,22 +71,20 @@ function uploadPrintPhoto() {
         mkdir($photosDir, 0755, true);
     }
 
-    // Generate unique filename
-    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+    // Generate unique filename (extension derived from validated MIME, not the client filename)
+    $ext = $mimeToExt[$mimeType];
     $filename = uniqid('print_') . '.' . $ext;
     $filePath = $photosDir . '/' . $filename;
     $relativePath = 'photos/' . $modelId . '/' . $filename;
 
     if (!move_uploaded_file($file['tmp_name'], $filePath)) {
-        echo json_encode(['success' => false, 'error' => 'Failed to save photo']);
-        return;
+        printingFail('Failed to save photo', 500);
     }
 
     // Resize if too large (max 2000px width)
     resizeImage($filePath, 2000);
 
     // Insert into database
-    $db = getDB();
     $stmt = $db->prepare('
         INSERT INTO print_photos (model_id, user_id, filename, file_path, caption)
         VALUES (:model_id, :user_id, :filename, :file_path, :caption)
@@ -126,8 +101,7 @@ function uploadPrintPhoto() {
 
     logActivity('upload_photo', 'model', $modelId, null, ['photo_id' => $photoId]);
 
-    echo json_encode([
-        'success' => true,
+    printingOk([
         'photo' => [
             'id' => $photoId,
             'filename' => $filename,
@@ -138,13 +112,12 @@ function uploadPrintPhoto() {
 }
 
 function deletePrintPhoto() {
-    global $user;
+    $user = getCurrentUser();
 
     $photoId = (int)($_POST['photo_id'] ?? 0);
 
     if (!$photoId) {
-        echo json_encode(['success' => false, 'error' => 'Photo ID required']);
-        return;
+        printingFail('Photo ID required');
     }
 
     $db = getDB();
@@ -155,14 +128,12 @@ function deletePrintPhoto() {
     $photo = $stmt->fetch();
 
     if (!$photo) {
-        echo json_encode(['success' => false, 'error' => 'Photo not found']);
-        return;
+        printingFail('Photo not found', 404);
     }
 
     // Check permission (owner or admin)
-    if ($photo['user_id'] !== $user['id'] && !$user['is_admin']) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied']);
-        return;
+    if ($photo['user_id'] != $user['id'] && !$user['is_admin']) {
+        printingFail('Permission denied', 403);
     }
 
     // Delete file
@@ -177,37 +148,21 @@ function deletePrintPhoto() {
 
     logActivity('delete_photo', 'model', $photo['model_id'], null, ['photo_id' => $photoId]);
 
-    echo json_encode(['success' => true]);
+    printingOk();
 }
 
 function setPrimaryPhoto() {
-    global $user;
+    $user = getCurrentUser();
 
     $photoId = (int)($_POST['photo_id'] ?? 0);
     $modelId = (int)($_POST['model_id'] ?? 0);
 
     if (!$photoId || !$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Photo ID and Model ID required']);
-        return;
+        printingFail('Photo ID and Model ID required');
     }
 
     $db = getDB();
-
-    // Verify model ownership
-    $stmt = $db->prepare('SELECT user_id, uploaded_by FROM models WHERE id = :id');
-    $stmt->execute([':id' => $modelId]);
-    $model = $stmt->fetch();
-
-    if (!$model) {
-        echo json_encode(['success' => false, 'error' => 'Model not found']);
-        return;
-    }
-
-    $ownerId = $model['user_id'] ?? $model['uploaded_by'] ?? null;
-    if ($ownerId && $ownerId != $user['id'] && !$user['is_admin'] && !canEdit()) {
-        echo json_encode(['success' => false, 'error' => 'Permission denied - not model owner']);
-        return;
-    }
+    printingRequireModelOwner($db, $modelId, $user);
 
     // Clear existing primary
     $stmt = $db->prepare('UPDATE print_photos SET is_primary = 0 WHERE model_id = :model_id');
@@ -217,15 +172,14 @@ function setPrimaryPhoto() {
     $stmt = $db->prepare('UPDATE print_photos SET is_primary = 1 WHERE id = :id AND model_id = :model_id');
     $stmt->execute([':id' => $photoId, ':model_id' => $modelId]);
 
-    echo json_encode(['success' => true]);
+    printingOk();
 }
 
 function listPrintPhotos() {
     $modelId = (int)($_GET['model_id'] ?? 0);
 
     if (!$modelId) {
-        echo json_encode(['success' => false, 'error' => 'Model ID required']);
-        return;
+        printingFail('Model ID required');
     }
 
     $db = getDB();
@@ -243,7 +197,7 @@ function listPrintPhotos() {
         $photos[] = $row;
     }
 
-    echo json_encode(['success' => true, 'photos' => $photos]);
+    printingOk(['photos' => $photos]);
 }
 
 function resizeImage($filePath, $maxWidth) {

@@ -5,15 +5,10 @@
 
 require_once __DIR__ . '/../../../includes/config.php';
 
-header('Content-Type: application/json');
-
-if (!isLoggedIn()) {
-    echo json_encode(['success' => false, 'error' => 'Not logged in']);
-    exit;
-}
-
-$user = getCurrentUser();
+$user = printingRequireLogin();
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+printingRequireCsrf($action, ['save_settings']);
 
 switch ($action) {
     case 'calculate':
@@ -26,7 +21,7 @@ switch ($action) {
         getCostSettings();
         break;
     default:
-        echo json_encode(['success' => false, 'error' => 'Invalid action']);
+        printingFail('Invalid action');
 }
 
 function calculateCost() {
@@ -75,8 +70,7 @@ function calculateCost() {
         $totalWithMarkup = $totalCost;
     }
 
-    echo json_encode([
-        'success' => true,
+    printingOk([
         'breakdown' => [
             'filament_cost' => round($filamentCost, 2),
             'electricity_cost' => round($electricityCost, 2),
@@ -91,7 +85,7 @@ function calculateCost() {
 }
 
 function saveCostSettings() {
-    global $user;
+    $user = getCurrentUser();
 
     $settings = [
         'filament_cost_per_kg' => floatval($_POST['filament_cost_per_kg'] ?? 0),
@@ -104,23 +98,20 @@ function saveCostSettings() {
         'currency' => $_POST['currency'] ?? 'USD'
     ];
 
-    // Store in user preferences (could use a separate table, but we'll use settings with user prefix)
-    $db = getDB();
+    // Store in user preferences (settings store, keyed per user)
     $key = 'user_cost_settings_' . $user['id'];
     setSetting($key, json_encode($settings));
 
-    echo json_encode(['success' => true]);
+    printingOk();
 }
 
 function getCostSettings() {
-    $settings = getUserCostSettings();
-    echo json_encode(['success' => true, 'settings' => $settings]);
+    printingOk(['settings' => getUserCostSettings()]);
 }
 
 function getUserCostSettings() {
-    global $user;
+    $user = getCurrentUser();
 
-    $db = getDB();
     $key = 'user_cost_settings_' . $user['id'];
     $json = getSetting($key, '');
 

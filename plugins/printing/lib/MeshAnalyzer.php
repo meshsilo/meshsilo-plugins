@@ -47,7 +47,7 @@ class MeshAnalyzer {
      * Analyze STL using admesh CLI tool
      */
     private static function analyzeWithAdmesh($filePath) {
-        $command = sprintf('admesh --info "%s" 2>&1', escapeshellarg($filePath));
+        $command = sprintf('admesh --info %s 2>&1', escapeshellarg($filePath));
         exec($command, $output, $returnCode);
 
         if ($returnCode !== 0) {
@@ -243,7 +243,7 @@ class MeshAnalyzer {
 
         // Run admesh with repair options
         $command = sprintf(
-            'admesh --fill-holes --fix-normal --normal-values --remove-unconnected --exact -b "%s" "%s" 2>&1',
+            'admesh --fill-holes --fix-normal --normal-values --remove-unconnected --exact -b %s %s 2>&1',
             escapeshellarg($output),
             escapeshellarg($inputPath)
         );
@@ -331,37 +331,47 @@ class MeshAnalyzer {
     private static function ensureMeshColumns($db) {
         static $checked = false;
         if ($checked) return;
-
-        try {
-            if ($db->getType() === 'mysql') {
-                $db->exec('ALTER TABLE models ADD COLUMN is_manifold TINYINT DEFAULT NULL');
-                $db->exec('ALTER TABLE models ADD COLUMN mesh_errors TEXT DEFAULT NULL');
-            } else {
-                $db->exec('ALTER TABLE models ADD COLUMN is_manifold INTEGER DEFAULT NULL');
-                $db->exec('ALTER TABLE models ADD COLUMN mesh_errors TEXT DEFAULT NULL');
-            }
-        } catch (Exception $e) {
-            // Columns probably already exist
-        }
-
         $checked = true;
+
+        $boolType = $db->getType() === 'mysql' ? 'TINYINT' : 'INTEGER';
+        // Add each column independently so a partially-applied state self-heals.
+        $columns = [
+            'is_manifold' => $boolType . ' DEFAULT NULL',
+            'mesh_errors' => 'TEXT DEFAULT NULL',
+        ];
+        foreach ($columns as $col => $definition) {
+            try {
+                $db->exec("ALTER TABLE models ADD COLUMN {$col} {$definition}");
+            } catch (\Throwable $e) {
+                // Column already exists - idempotent no-op.
+            }
+        }
     }
 
     /**
      * Get mesh status for a model
      */
     public static function getMeshStatus($model) {
-        if (!isset($model['is_manifold'])) {
+        $hasManifold = array_key_exists('is_manifold', $model);
+        $hasErrors = array_key_exists('mesh_errors', $model);
+
+        // The columns only exist once mesh analysis has run on this instance.
+        if (!$hasManifold && !$hasErrors) {
             return null;
         }
 
-        if ($model['is_manifold'] === null) {
-            return null; // Not analyzed yet
+        $manifold = $hasManifold ? $model['is_manifold'] : null;
+        $errors = $hasErrors ? $model['mesh_errors'] : null;
+
+        // This particular model has never been analyzed.
+        if ($manifold === null && ($errors === null || $errors === '')) {
+            return null;
         }
 
         return [
-            'is_manifold' => (bool)$model['is_manifold'],
-            'issues' => !empty($model['mesh_errors']) ? json_decode($model['mesh_errors'], true) : []
+            // null means "analyzed, but manifold state undetermined" (basic analysis).
+            'is_manifold' => $manifold === null ? null : (bool)$manifold,
+            'issues' => !empty($errors) ? (json_decode($errors, true) ?: []) : []
         ];
     }
 }

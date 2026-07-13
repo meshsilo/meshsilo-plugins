@@ -278,37 +278,83 @@ function storeGCodeMetadata($modelId, $metadata) {
     $db = getDB();
 
     // Check if gcode_metadata table exists, create if not
-    $stmt = $db->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gcode_metadata'");
-    $result = $stmt->execute();
-    if (!$result->fetchArray()) {
-        $db->exec("CREATE TABLE gcode_metadata (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            model_id INTEGER NOT NULL UNIQUE,
-            print_time INTEGER,
-            print_time_formatted TEXT,
-            filament_used REAL,
-            filament_used_g REAL,
-            filament_used_m REAL,
-            layer_height REAL,
-            layer_count INTEGER,
-            nozzle_diameter REAL,
-            bed_temp INTEGER,
-            hotend_temp INTEGER,
-            slicer TEXT,
-            slicer_version TEXT,
-            infill TEXT,
-            supports TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
-        )");
+    if (!tableExists($db, 'gcode_metadata')) {
+        $isMysql = (defined('DB_TYPE') && DB_TYPE === 'mysql')
+            || $db->getType() === 'mysql';
+        if ($isMysql) {
+            $db->exec("CREATE TABLE gcode_metadata (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                model_id INT NOT NULL UNIQUE,
+                print_time INT,
+                print_time_formatted TEXT,
+                filament_used DOUBLE,
+                filament_used_g DOUBLE,
+                filament_used_m DOUBLE,
+                layer_height DOUBLE,
+                layer_count INT,
+                nozzle_diameter DOUBLE,
+                bed_temp INT,
+                hotend_temp INT,
+                slicer TEXT,
+                slicer_version TEXT,
+                infill TEXT,
+                supports TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )");
+        } else {
+            $db->exec("CREATE TABLE gcode_metadata (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_id INTEGER NOT NULL UNIQUE,
+                print_time INTEGER,
+                print_time_formatted TEXT,
+                filament_used REAL,
+                filament_used_g REAL,
+                filament_used_m REAL,
+                layer_height REAL,
+                layer_count INTEGER,
+                nozzle_diameter REAL,
+                bed_temp INTEGER,
+                hotend_temp INTEGER,
+                slicer TEXT,
+                slicer_version TEXT,
+                infill TEXT,
+                supports TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (model_id) REFERENCES models(id) ON DELETE CASCADE
+            )");
+        }
     }
 
-    // Insert or replace metadata
-    $stmt = $db->prepare("INSERT OR REPLACE INTO gcode_metadata
-        (model_id, print_time, print_time_formatted, filament_used, filament_used_g, filament_used_m,
-         layer_height, layer_count, nozzle_diameter, bed_temp, hotend_temp, slicer, slicer_version, infill, supports)
-        VALUES (:model_id, :print_time, :print_time_formatted, :filament_used, :filament_used_g, :filament_used_m,
-                :layer_height, :layer_count, :nozzle_diameter, :bed_temp, :hotend_temp, :slicer, :slicer_version, :infill, :supports)");
+    // Insert or update metadata (portable upsert on model_id)
+    $checkStmt = $db->prepare('SELECT 1 FROM gcode_metadata WHERE model_id = :model_id');
+    $checkStmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
+    $checkStmt->execute();
+    $exists = $checkStmt->fetchColumn() !== false;
+
+    if ($exists) {
+        $stmt = $db->prepare("UPDATE gcode_metadata SET
+            print_time = :print_time,
+            print_time_formatted = :print_time_formatted,
+            filament_used = :filament_used,
+            filament_used_g = :filament_used_g,
+            filament_used_m = :filament_used_m,
+            layer_height = :layer_height,
+            layer_count = :layer_count,
+            nozzle_diameter = :nozzle_diameter,
+            bed_temp = :bed_temp,
+            hotend_temp = :hotend_temp,
+            slicer = :slicer,
+            slicer_version = :slicer_version,
+            infill = :infill,
+            supports = :supports
+            WHERE model_id = :model_id");
+    } else {
+        $stmt = $db->prepare("INSERT INTO gcode_metadata
+            (model_id, print_time, print_time_formatted, filament_used, filament_used_g, filament_used_m,
+             layer_height, layer_count, nozzle_diameter, bed_temp, hotend_temp, slicer, slicer_version, infill, supports)
+            VALUES (:model_id, :print_time, :print_time_formatted, :filament_used, :filament_used_g, :filament_used_m,
+                    :layer_height, :layer_count, :nozzle_diameter, :bed_temp, :hotend_temp, :slicer, :slicer_version, :infill, :supports)");
+    }
 
     $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
     $stmt->bindValue(':print_time', $metadata['print_time'], PDO::PARAM_INT);
@@ -336,16 +382,14 @@ function getGCodeMetadata($modelId) {
     $db = getDB();
 
     // Check if table exists
-    $stmt = $db->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gcode_metadata'");
-    $result = $stmt->execute();
-    if (!$result->fetchArray()) {
+    if (!tableExists($db, 'gcode_metadata')) {
         return null;
     }
 
     $stmt = $db->prepare('SELECT * FROM gcode_metadata WHERE model_id = :model_id');
     $stmt->bindValue(':model_id', $modelId, PDO::PARAM_INT);
-    $result = $stmt->execute();
-    return $result->fetchArray(PDO::FETCH_ASSOC);
+    $stmt->execute();
+    return $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
 /**

@@ -16,12 +16,31 @@
  * @param {number} modelId - The model ID to toggle.
  * @param {HTMLElement} btn - The queue button element.
  */
+/**
+ * Read the plugin's CSRF token (rendered by boot.php into #printing-csrf) and
+ * return it as a URL-encoded "name=value" pair for inclusion in fetch bodies,
+ * or an empty string when no token is available.
+ *
+ * @returns {string}
+ */
+function printingCsrfBody() {
+    const holder = document.getElementById('printing-csrf');
+    if (!holder) return '';
+    const input = holder.querySelector('input[name]');
+    if (!input || !input.value) return '';
+    return encodeURIComponent(input.name) + '=' + encodeURIComponent(input.value);
+}
+
 async function togglePrintQueue(modelId, btn) {
     try {
+        let body = 'action=toggle&model_id=' + encodeURIComponent(modelId);
+        const csrf = printingCsrfBody();
+        if (csrf) body += '&' + csrf;
+
         const response = await fetch('/actions/print-queue', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'action=toggle&model_id=' + modelId
+            body: body
         });
         const data = await response.json();
         if (data.success) {
@@ -51,17 +70,33 @@ async function calculateCost(modelId) {
 
     try {
         const formData = new FormData();
+        formData.append('action', 'calculate');
         formData.append('model_id', modelId);
+        // Forward any cost inputs the page provides to the calculator endpoint.
+        ['filament_used_g', 'print_time_minutes', 'filament_type'].forEach(function (name) {
+            const el = document.getElementById(name) || document.querySelector('[name="' + name + '"]');
+            if (el && el.value) formData.append(name, el.value);
+        });
 
-        const response = await fetch('/actions/calculate-volume', {
+        const response = await fetch('/actions/cost-calculator', {
             method: 'POST',
             body: formData
         });
         const data = await response.json();
 
-        if (data.success && data.cost_estimate) {
-            // Reload the page to show the cost estimate
-            location.reload();
+        if (data.success && data.breakdown) {
+            const currency = data.currency || 'USD';
+            const total = data.breakdown.total;
+            const target = document.getElementById('cost-result');
+            if (target) {
+                target.textContent = currency + ' ' + total;
+            } else {
+                alert('Estimated print cost: ' + currency + ' ' + total);
+            }
+            if (btn) {
+                btn.textContent = 'Calculate Print Cost';
+                btn.disabled = false;
+            }
         } else {
             alert('Could not calculate cost: ' + (data.error || 'Unknown error'));
             if (btn) {
@@ -80,10 +115,109 @@ async function calculateCost(modelId) {
 }
 
 /* =====================
+   Mesh Analysis
+   ===================== */
+
+/** Escape a string for safe insertion as HTML text. */
+function meshEscapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+}
+
+/** Render a mesh analysis result object into HTML. */
+function renderMeshAnalysis(a) {
+    if (!a) return '<p class="mesh-empty">No analysis available.</p>';
+
+    var html = '';
+    if (a.is_manifold === true) {
+        html += '<p class="mesh-ok">&#10003; Mesh is manifold (watertight).</p>';
+    } else if (a.is_manifold === false) {
+        html += '<p class="mesh-bad">&#9888; Mesh is not watertight.</p>';
+    } else {
+        html += '<p class="mesh-empty">Manifold status could not be determined' + (a.tool === 'basic' ? ' (basic analysis)' : '') + '.</p>';
+    }
+
+    if (a.issues && a.issues.length) {
+        html += '<ul class="mesh-issues">';
+        a.issues.forEach(function (i) {
+            html += '<li class="mesh-issue mesh-sev-' + (i.severity || 'info') + '">' + meshEscapeHtml(i.message || i.type || '') + '</li>';
+        });
+        html += '</ul>';
+    } else {
+        html += '<p class="mesh-ok">No issues detected.</p>';
+    }
+
+    if (a.stats && a.stats.facets) {
+        html += '<p class="mesh-stats">' + Number(a.stats.facets).toLocaleString() + ' facets'
+            + (a.stats.format ? ' (' + meshEscapeHtml(a.stats.format) + ' STL)' : '') + '</p>';
+    }
+    return html;
+}
+
+/** Run an analyze/repair request for the mesh-analysis container holding btn. */
+async function runMeshAction(btn, action) {
+    var container = btn.closest('.mesh-analysis');
+    if (!container) return;
+
+    var modelId = container.dataset.modelId;
+    var resultEl = container.querySelector('.mesh-result');
+    var actionsEl = container.querySelector('.mesh-actions');
+    var original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = action === 'repair' ? 'Repairing...' : 'Analyzing...';
+
+    try {
+        var body = 'action=' + action + '&model_id=' + encodeURIComponent(modelId);
+        var csrf = printingCsrfBody();
+        if (csrf) body += '&' + csrf;
+
+        var response = await fetch('/actions/mesh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+        });
+        var data = await response.json();
+
+        if (data.success) {
+            if (resultEl) resultEl.innerHTML = renderMeshAnalysis(data.analysis);
+            var hasRepair = actionsEl && actionsEl.querySelector('.mesh-repair-btn');
+            if (data.analysis && data.analysis.can_repair && actionsEl && !hasRepair) {
+                var rb = document.createElement('button');
+                rb.type = 'button';
+                rb.className = 'btn btn-warning mesh-repair-btn';
+                rb.dataset.modelId = modelId;
+                rb.textContent = 'Repair Mesh';
+                actionsEl.appendChild(rb);
+            } else if (data.analysis && !data.analysis.can_repair && hasRepair) {
+                hasRepair.remove();
+            }
+        } else if (resultEl) {
+            resultEl.innerHTML = '<p class="mesh-bad">' + meshEscapeHtml(data.error || 'Action failed') + '</p>';
+        }
+    } catch (err) {
+        console.error('Mesh ' + action + ' failed:', err);
+        if (resultEl) resultEl.innerHTML = '<p class="mesh-bad">Request failed</p>';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+    }
+}
+
+// Delegated handler so buttons work even when the tab is rendered lazily.
+document.addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    var analyzeBtn = e.target.closest('.mesh-analyze-btn');
+    if (analyzeBtn) { runMeshAction(analyzeBtn, 'analyze'); return; }
+    var repairBtn = e.target.closest('.mesh-repair-btn');
+    if (repairBtn) { runMeshAction(repairBtn, 'repair'); }
+});
+
+/* =====================
    Slicer Protocol Definitions
    ===================== */
 
-// Must match includes/slicers.php
+// Must match lib/slicers.php
 const slicerProtocols = {
     'bambustudio': 'bambustudio://open?file={url}',
     'orcaslicer': 'orcaslicer://open?file={url}',

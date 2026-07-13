@@ -7,6 +7,7 @@
  */
 
 // Load libraries
+require_once $pluginDir . '/lib/http.php';
 require_once $pluginDir . '/lib/PrintFunctions.php';
 require_once $pluginDir . '/lib/gcode.php';
 require_once $pluginDir . '/lib/slicers.php';
@@ -25,9 +26,12 @@ $plugin->addRoute('GET', '/actions/print-photo', ['file' => $pluginDir . '/actio
 $plugin->addRoute('POST', '/actions/cost-calculator', ['file' => $pluginDir . '/actions/cost-calculator.php'], 'actions.cost-calculator');
 $plugin->addRoute('GET', '/actions/cost-calculator', ['file' => $pluginDir . '/actions/cost-calculator.php'], 'actions.cost-calculator.get');
 $plugin->addRoute('GET', '/actions/printer', ['file' => $pluginDir . '/actions/printer.php'], 'actions.printer.get');
+$plugin->addRoute('POST', '/actions/mesh', ['file' => $pluginDir . '/actions/mesh.php'], 'actions.mesh');
+$plugin->addRoute('GET', '/actions/mesh', ['file' => $pluginDir . '/actions/mesh.php'], 'actions.mesh.get');
 
 // Register assets
 $plugin->addStylesheet('printing', 'printing.css');
+$plugin->addScript('printing', 'printing.js');
 
 // Add navigation items
 $plugin->addFilter('nav_items', function($items) {
@@ -79,17 +83,10 @@ $plugin->addFilter('available_features', function($features) {
         ],
         'mesh_analysis' => [
             'name' => 'Mesh Analysis',
-            'description' => 'Analyze STL files for printability issues and repair',
-            'icon' => 'cube',
-            'category' => 'Analysis',
-            'default' => true,
-        ],
-        'model_analysis' => [
-            'name' => 'Model Analysis',
-            'description' => 'Automated printability analysis and warnings',
+            'description' => 'Analyze STL meshes for holes, non-manifold edges, and inverted normals (optional admesh repair)',
             'icon' => 'activity',
-            'category' => 'Analysis',
-            'default' => false,
+            'category' => 'Printing',
+            'default' => true,
         ],
     ];
 
@@ -260,8 +257,68 @@ $plugin->addFilter('model_card_extra', function($html, $model) {
     return $html;
 });
 
-// Footer content - inject JavaScript
+// Model detail tab - mesh analysis for STL models
+$plugin->addFilter('model_detail_tabs', function($tabs, $model) {
+    if (strtolower($model['file_type'] ?? '') !== 'stl') return $tabs;
+    if (function_exists('isFeatureEnabled') && !isFeatureEnabled('mesh_analysis')) return $tabs;
+    if (!class_exists('MeshAnalyzer')) return $tabs;
+
+    $modelId = (int)$model['id'];
+    $status = MeshAnalyzer::getMeshStatus($model);
+
+    // The model row handed to this filter may predate the mesh columns; fetch
+    // the current status directly so the summary is accurate after an analysis.
+    if ($status === null && !array_key_exists('is_manifold', $model) && function_exists('getDB')) {
+        try {
+            $db = getDB();
+            $stmt = $db->prepare('SELECT is_manifold, mesh_errors FROM models WHERE id = :id');
+            $stmt->execute([':id' => $modelId]);
+            $row = $stmt->fetch();
+            if ($row) {
+                $status = MeshAnalyzer::getMeshStatus($row);
+            }
+        } catch (\Throwable $e) {
+            // Mesh columns not created yet - treat as never analyzed.
+        }
+    }
+
+    $admesh = MeshAnalyzer::isAdmeshAvailable();
+
+    $summary = '<p class="mesh-empty">This model has not been analyzed yet.</p>';
+    if ($status !== null) {
+        $count = count($status['issues'] ?? []);
+        if ($status['is_manifold'] === true) {
+            $summary = '<p class="mesh-ok">&#10003; Mesh is manifold (watertight) with no detected issues.</p>';
+        } elseif ($status['is_manifold'] === false) {
+            $summary = '<p class="mesh-bad">&#9888; ' . $count . ' mesh ' . ($count === 1 ? 'issue' : 'issues') . ' detected.</p>';
+        } else {
+            $summary = '<p class="mesh-empty">Analyzed. Install <code>admesh</code> on the server for a full manifold check.</p>';
+        }
+    }
+
+    $content = '<div class="mesh-analysis" data-model-id="' . $modelId . '">';
+    $content .= '<div class="mesh-result">' . $summary . '</div>';
+    $content .= '<div class="mesh-actions">';
+    $content .= '<button type="button" class="btn btn-secondary mesh-analyze-btn" data-model-id="' . $modelId . '">Analyze Mesh</button>';
+    if ($status !== null && $status['is_manifold'] === false && $admesh) {
+        $content .= '<button type="button" class="btn btn-warning mesh-repair-btn" data-model-id="' . $modelId . '">Repair Mesh</button>';
+    }
+    if (!$admesh) {
+        $content .= '<span class="mesh-hint">Install <code>admesh</code> on the server to enable automatic repair.</span>';
+    }
+    $content .= '</div></div>';
+
+    $tabs[] = ['label' => 'Mesh Analysis', 'content' => $content];
+    return $tabs;
+});
+
+// Footer content - expose a CSRF token for the plugin's AJAX actions.
+// The plugin JavaScript (registered via addScript above) reads the rendered
+// token field from this holder and includes it in state-changing fetch()
+// requests (print queue toggle/remove/priority/clear).
 $plugin->addFilter('footer_content', function($html) {
-    $html .= '<script src="/plugins/printing/assets/printing.js"></script>';
+    if (function_exists('isLoggedIn') && isLoggedIn() && function_exists('csrf_field')) {
+        $html .= '<div id="printing-csrf" hidden>' . csrf_field() . '</div>';
+    }
     return $html;
 });

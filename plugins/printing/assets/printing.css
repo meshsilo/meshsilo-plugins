@@ -408,3 +408,64 @@
     justify-content: center;
     padding: 0.75rem;
 }
+
+/* Mesh Analysis */
+.mesh-analysis {
+    padding: 0.5rem 0;
+}
+.mesh-result {
+    margin-bottom: 0.75rem;
+}
+.mesh-ok {
+    color: var(--color-success, #2e7d32);
+}
+.mesh-bad {
+    color: var(--color-danger, #c62828);
+}
+.mesh-empty {
+    color: var(--color-text-muted, #888);
+}
+.mesh-issues {
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0;
+}
+.mesh-issue {
+    padding: 0.35rem 0.6rem;
+    margin-bottom: 0.35rem;
+    border: 1px solid var(--color-border, #ddd);
+    background: var(--color-surface-hover, rgba(0, 0, 0, 0.03));
+    border-radius: 4px;
+}
+.mesh-sev-error {
+    background: rgba(198, 40, 40, 0.10);
+    border-color: rgba(198, 40, 40, 0.35);
+}
+.mesh-sev-warning {
+    background: rgba(249, 168, 37, 0.12);
+    border-color: rgba(249, 168, 37, 0.40);
+}
+.mesh-sev-info {
+    background: rgba(25, 118, 210, 0.08);
+    border-color: rgba(25, 118, 210, 0.30);
+}
+.mesh-stats {
+    margin-top: 0.5rem;
+    color: var(--color-text-muted, #888);
+    font-size: 0.9em;
+}
+.mesh-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.mesh-hint {
+    color: var(--color-text-muted, #888);
+    font-size: 0.85em;
+}
+.mesh-hint code {
+    padding: 0.1rem 0.3rem;
+    background: var(--color-surface-hover, rgba(0, 0, 0, 0.06));
+    border-radius: 3px;
+}
