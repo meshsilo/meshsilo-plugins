@@ -66,11 +66,11 @@
         {
             "id": "printing",
             "name": "3D Printing Tools",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "description": "Print queue, printer profiles, slicer integration, GCode parsing, cost calculator, and mesh analysis.",
             "author": "MeshSilo",
             "category": "Printing",
-            "min_silo_version": "1.0.0",
+            "min_silo_version": "0.5.0",
             "requires_plugins": [],
             "path": "plugins/printing"
         },
