@@ -28,6 +28,16 @@ $plugin->addRoute('GET', '/actions/cost-calculator', ['file' => $pluginDir . '/a
 $plugin->addRoute('GET', '/actions/printer', ['file' => $pluginDir . '/actions/printer.php'], 'actions.printer.get');
 $plugin->addRoute('POST', '/actions/mesh', ['file' => $pluginDir . '/actions/mesh.php'], 'actions.mesh');
 $plugin->addRoute('GET', '/actions/mesh', ['file' => $pluginDir . '/actions/mesh.php'], 'actions.mesh.get');
+$plugin->addRoute('POST', '/actions/slicer', ['file' => $pluginDir . '/actions/slicer.php'], 'actions.slicer');
+$plugin->addRoute('GET', '/actions/slicer', ['file' => $pluginDir . '/actions/slicer.php'], 'actions.slicer.get');
+
+// The slicer download action is token-authenticated and must be reachable by a
+// desktop slicer that has no browser session, so mark the route public. The
+// 'urls' action on the same route still enforces login itself.
+$plugin->addFilter('public_routes', function($routes) {
+    $routes[] = '/actions/slicer';
+    return $routes;
+});
 
 // Register assets
 $plugin->addStylesheet('printing', 'printing.css');
@@ -108,6 +118,26 @@ $plugin->addFilter('model_header_actions', function($html, $model) {
     $title = $inQueue ? 'Remove from print queue' : 'Add to print queue';
 
     $html .= '<button type="button" class="queue-btn' . $class . '" onclick="togglePrintQueue(' . (int)$model['id'] . ', this)" title="' . htmlspecialchars($title) . '">&#128424;</button>';
+    return $html;
+});
+
+// Model header actions - "Send to slicer" dropdown for a sliceable model
+$plugin->addFilter('model_header_actions', function($html, $model) {
+    if (function_exists('isFeatureEnabled') && !isFeatureEnabled('slicer_integration')) return $html;
+    $type = strtolower($model['file_type'] ?? '');
+    if (!in_array($type, ['stl', '3mf', 'obj', 'step', 'stp'], true)) return $html;
+    if (!function_exists('getEnabledSlicers')) return $html;
+    $slicers = getEnabledSlicers();
+    if (empty($slicers)) return $html;
+
+    $items = '';
+    foreach ($slicers as $key => $s) {
+        $items .= '<a href="#" class="dropdown-item slicer-link" data-slicer="' . htmlspecialchars($key)
+            . '" data-model-id="' . (int)$model['id'] . '">' . htmlspecialchars($s['name']) . '</a>';
+    }
+    $html .= '<div class="dropdown slicer-dropdown">'
+        . '<button type="button" class="btn btn-secondary slicer-toggle">Send to slicer <span class="dropdown-arrow">&#9662;</span></button>'
+        . '<div class="dropdown-menu dropdown-menu-right">' . $items . '</div></div>';
     return $html;
 });
 
@@ -193,7 +223,7 @@ $plugin->addFilter('part_row_actions', function($html, $part) {
         $slicers = getSlicersForFormat($part['file_type'] ?? '');
         if (!empty($slicers)) {
             $output .= '<div class="dropdown slicer-dropdown">';
-            $output .= '<button type="button" class="btn btn-small btn-secondary dropdown-toggle">Open in <span class="dropdown-arrow">&#9662;</span></button>';
+            $output .= '<button type="button" class="btn btn-small btn-secondary slicer-toggle">Open in <span class="dropdown-arrow">&#9662;</span></button>';
             $output .= '<div class="dropdown-menu dropdown-menu-right">';
             foreach ($slicers as $key => $slicer) {
                 $output .= '<a href="#" class="dropdown-item slicer-link" data-slicer="' . htmlspecialchars($key) . '" data-part-id="' . (int)$part['id'] . '" data-has-protocol="' . (!empty($slicer['protocol']) ? '1' : '0') . '">' . htmlspecialchars($slicer['name']) . '</a>';
@@ -312,13 +342,44 @@ $plugin->addFilter('model_detail_tabs', function($tabs, $model) {
     return $tabs;
 });
 
-// Footer content - expose a CSRF token for the plugin's AJAX actions.
-// The plugin JavaScript (registered via addScript above) reads the rendered
-// token field from this holder and includes it in state-changing fetch()
-// requests (print queue toggle/remove/priority/clear).
+// Model card - "Slice" dropdown for sliceable models (browse / category pages)
+$plugin->addFilter('model_card_extra', function($html, $model) {
+    if (function_exists('isFeatureEnabled') && !isFeatureEnabled('slicer_integration')) return $html;
+    $type = strtolower($model['file_type'] ?? $model['preview_type'] ?? '');
+    if (!in_array($type, ['stl', '3mf', 'obj', 'step', 'stp'], true)) return $html;
+    if (!function_exists('getEnabledSlicers')) return $html;
+    $slicers = getEnabledSlicers();
+    if (empty($slicers)) return $html;
+
+    $items = '';
+    foreach ($slicers as $key => $s) {
+        $items .= '<a href="#" class="dropdown-item slicer-link" data-slicer="' . htmlspecialchars($key)
+            . '" data-model-id="' . (int)$model['id'] . '">' . htmlspecialchars($s['name']) . '</a>';
+    }
+    $html .= '<div class="dropdown slicer-dropdown slicer-card-dropdown" onclick="event.stopPropagation();">'
+        . '<button type="button" class="btn btn-small btn-secondary slicer-toggle">Slice <span class="dropdown-arrow">&#9662;</span></button>'
+        . '<div class="dropdown-menu dropdown-menu-right">' . $items . '</div></div>';
+    return $html;
+});
+
+// Footer content - expose a CSRF token for the plugin's AJAX actions and the
+// enabled-slicer list. The plugin JavaScript reads the CSRF token from this
+// holder for state-changing requests, and uses window.printingSlicers to build
+// "Send to slicer" dropdowns where there is no server-side hook (part folders).
 $plugin->addFilter('footer_content', function($html) {
     if (function_exists('isLoggedIn') && isLoggedIn() && function_exists('csrf_field')) {
         $html .= '<div id="printing-csrf" hidden>' . csrf_field() . '</div>';
+    }
+    // Expose enabled slicers to the JS so it can build "Send to slicer" dropdowns
+    // (e.g. injected per part-folder, where there is no server-side hook).
+    if (function_exists('isFeatureEnabled') && isFeatureEnabled('slicer_integration') && function_exists('getEnabledSlicers')) {
+        $list = [];
+        foreach (getEnabledSlicers() as $key => $s) {
+            $list[] = ['key' => $key, 'name' => $s['name'], 'protocol' => !empty($s['protocol'])];
+        }
+        if ($list) {
+            $html .= '<script>window.printingSlicers = ' . json_encode($list) . ';</script>';
+        }
     }
     return $html;
 });

@@ -214,10 +214,10 @@ document.addEventListener('click', function (e) {
 });
 
 /* =====================
-   Slicer Protocol Definitions
+   Send to Slicer
    ===================== */
 
-// Must match lib/slicers.php
+// URL protocols per slicer. Must match lib/slicers.php.
 const slicerProtocols = {
     'bambustudio': 'bambustudio://open?file={url}',
     'orcaslicer': 'orcaslicer://open?file={url}',
@@ -225,6 +225,181 @@ const slicerProtocols = {
     'cura': 'cura://open?file={url}',
     'superslicer': 'superslicer://open?file={url}'
 };
+
+/**
+ * Determine which model/part ids a clicked slicer link targets.
+ * Supports an explicit list (data-ids), a single part/model, or a whole folder.
+ */
+function slicerIdsFor(link) {
+    if (link.dataset.ids) {
+        return link.dataset.ids.split(',').filter(Boolean);
+    }
+    if (link.dataset.partId) {
+        return [link.dataset.partId];
+    }
+    if (link.dataset.modelId) {
+        return [link.dataset.modelId];
+    }
+    if (link.dataset.folder !== undefined) {
+        var group = link.closest('.parts-group');
+        if (group) {
+            return Array.prototype.map.call(
+                group.querySelectorAll('.part-item[data-part-id]'),
+                function (p) { return p.dataset.partId; }
+            );
+        }
+    }
+    return [];
+}
+
+/**
+ * Fetch signed download tokens for the given parts and hand them to the slicer
+ * via its URL protocol. Multiple files are passed as repeated file= params.
+ * Slicers without a protocol just download the file(s).
+ */
+async function sendToSlicer(slicerKey, ids) {
+    if (!ids || !ids.length) {
+        return;
+    }
+    try {
+        const resp = await fetch('/actions/slicer?action=urls&ids=' + encodeURIComponent(ids.join(',')));
+        const data = await resp.json();
+        if (!data.success || !data.files || !data.files.length) {
+            alert('Could not prepare files for the slicer: ' + (data.error || 'no sliceable files'));
+            return;
+        }
+        const origin = window.location.origin;
+        const urls = data.files.map(function (f) {
+            return origin + '/actions/slicer?action=download&token=' + encodeURIComponent(f.token);
+        });
+
+        const proto = slicerProtocols[slicerKey];
+        if (proto) {
+            var intent;
+            if (urls.length === 1) {
+                intent = proto.replace('{url}', encodeURIComponent(urls[0]));
+            } else {
+                var base = proto.replace('file={url}', '');
+                intent = base + urls.map(function (u) { return 'file=' + encodeURIComponent(u); }).join('&');
+            }
+            window.location.href = intent;
+        } else {
+            // Download-only slicer: fetch each file so it opens in the default handler.
+            urls.forEach(function (u) { window.open(u, '_blank'); });
+        }
+    } catch (err) {
+        console.error('Send to slicer failed:', err);
+        alert('Failed to send to slicer');
+    }
+}
+
+/*
+ * Open a slicer dropdown by portaling its menu to <body>.
+ *
+ * Containers such as model cards use overflow:hidden AND a CSS transform (from
+ * their entrance animation). The transform makes a nested position:fixed menu
+ * resolve against the card rather than the viewport, and the overflow then clips
+ * the lower entries - leaving some slicers unreachable. Moving the menu to <body>
+ * on open (and restoring it on close) sidesteps both traps. Folder menus resolve
+ * their part ids up front so id-gathering still works once the menu has left the
+ * .parts-group it depended on.
+ */
+function slicerOpen(dropdown) {
+    var menu = dropdown.querySelector('.dropdown-menu');
+    var toggle = dropdown.querySelector('.slicer-toggle');
+    if (!menu || !toggle) {
+        return;
+    }
+    // Resolve folder ids before the menu is detached from its .parts-group.
+    var folderLinks = menu.querySelectorAll('.slicer-link[data-folder]');
+    if (folderLinks.length && !folderLinks[0].dataset.ids) {
+        var ids = slicerIdsFor(folderLinks[0]);
+        if (ids.length) {
+            var joined = ids.join(',');
+            Array.prototype.forEach.call(folderLinks, function (fl) { fl.dataset.ids = joined; });
+        }
+    }
+
+    dropdown.classList.add('open');
+    dropdown._slicerMenu = menu;
+    menu._slicerHome = { parent: menu.parentNode, next: menu.nextSibling };
+    document.body.appendChild(menu);
+    menu.classList.add('slicer-menu-portal');
+
+    var r = toggle.getBoundingClientRect();
+    var mw = menu.offsetWidth || 200;
+    var mh = menu.offsetHeight;
+    menu.style.position = 'fixed';
+    menu.style.left = Math.max(8, Math.min(r.right - mw, window.innerWidth - mw - 8)) + 'px';
+    // Flip above the toggle if it would overflow the viewport bottom.
+    menu.style.top = ((r.bottom + 4 + mh > window.innerHeight - 8 && r.top - mh - 4 > 8)
+        ? (r.top - mh - 4)
+        : (r.bottom + 4)) + 'px';
+}
+
+/* Close a slicer dropdown, restoring a portaled menu to its original place. */
+function slicerClose(dropdown) {
+    if (!dropdown.classList.contains('open')) {
+        return;
+    }
+    dropdown.classList.remove('open');
+    var menu = dropdown._slicerMenu;
+    if (menu && menu._slicerHome) {
+        menu.classList.remove('slicer-menu-portal');
+        menu.style.position = menu.style.top = menu.style.left = '';
+        menu._slicerHome.parent.insertBefore(menu, menu._slicerHome.next);
+        menu._slicerHome = null;
+    }
+    dropdown._slicerMenu = null;
+}
+
+function slicerCloseAll(except) {
+    document.querySelectorAll('.slicer-dropdown.open').forEach(function (d) {
+        if (d !== except) {
+            slicerClose(d);
+        }
+    });
+}
+
+// Toggle handling. Capture phase: model cards wrap the dropdown in an element
+// that calls event.stopPropagation() in the bubble phase (to suppress card
+// navigation), which would otherwise hide this click from a bubble-phase handler.
+document.addEventListener('click', function (e) {
+    var toggle = e.target.closest ? e.target.closest('.slicer-toggle') : null;
+    if (!toggle) {
+        // Click anywhere else closes any open slicer dropdown.
+        slicerCloseAll(null);
+        return;
+    }
+    e.preventDefault();
+    var current = toggle.closest('.slicer-dropdown');
+    var wasOpen = current.classList.contains('open');
+    slicerCloseAll(current);
+    if (wasOpen) {
+        slicerClose(current);
+    } else {
+        slicerOpen(current);
+    }
+}, true);
+
+// Slicer link activation (capture phase, see above). Works for part rows, model
+// cards, and injected folder dropdowns - including once a menu has been portaled.
+document.addEventListener('click', function (e) {
+    var link = e.target.closest ? e.target.closest('.slicer-link') : null;
+    if (!link) {
+        return;
+    }
+    e.preventDefault();
+    var slicer = link.dataset.slicer;
+    var ids = slicerIdsFor(link);
+    slicerCloseAll(null);
+    sendToSlicer(slicer, ids);
+}, true);
+
+// A portaled menu is positioned once; drop it if the page scrolls or resizes so
+// it can never float detached from its toggle.
+window.addEventListener('scroll', function () { slicerCloseAll(null); }, true);
+window.addEventListener('resize', function () { slicerCloseAll(null); });
 
 /* =====================
    DOMContentLoaded Handlers
@@ -370,34 +545,28 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /* -----------------------
-       Slicer Link Handler
+       Folder "Send to Slicer" injection - the model page renders part folders
+       (.parts-group > .folder-actions) with no plugin hook, so add a slicer
+       dropdown per folder here. The delegated handler gathers the folder's parts.
        ----------------------- */
 
-    document.querySelectorAll('.slicer-link').forEach(function (link) {
-        link.addEventListener('click', function (e) {
-            e.preventDefault();
-
-            const slicer = this.dataset.slicer;
-            const partId = this.dataset.partId;
-            const hasProtocol = this.dataset.hasProtocol === '1';
-
-            // Build the download URL
-            const baseUrl = window.location.origin + window.location.pathname.replace(/\/[^\/]*$/, '');
-            const downloadUrl = baseUrl + '/actions/download.php?id=' + partId;
-
-            if (hasProtocol && slicerProtocols[slicer]) {
-                // Open using slicer's URL protocol
-                var slicerUrl = slicerProtocols[slicer].replace('{url}', encodeURIComponent(downloadUrl));
-                window.location.href = slicerUrl;
-            } else {
-                // No protocol support - just download the file
-                // User will need to open it manually in their slicer
-                window.location.href = downloadUrl;
-            }
-
-            // Close the dropdown
-            this.closest('.dropdown').classList.remove('open');
-        });
+    document.querySelectorAll('.parts-group .folder-actions').forEach(function (actions) {
+        if (actions.querySelector('.slicer-dropdown')) {
+            return;
+        }
+        var links = (window.printingSlicers || []).map(function (s) {
+            return '<a href="#" class="dropdown-item slicer-link" data-slicer="' + s.key
+                + '" data-folder="1">' + s.name + '</a>';
+        }).join('');
+        if (!links) {
+            return;
+        }
+        var wrap = document.createElement('div');
+        wrap.className = 'dropdown slicer-dropdown';
+        wrap.innerHTML =
+            '<button type="button" class="btn btn-small btn-secondary slicer-toggle">Send to slicer <span class="dropdown-arrow">&#9662;</span></button>'
+            + '<div class="dropdown-menu dropdown-menu-right">' + links + '</div>';
+        actions.appendChild(wrap);
     });
 
     /* -----------------------

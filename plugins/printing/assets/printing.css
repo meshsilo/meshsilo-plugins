@@ -274,6 +274,14 @@
 /* =====================
    Slicer Integration
    ===================== */
+/* Slicer toggle button: own class (not .dropdown-toggle) so the host's
+   model-page.js dropdown system does not double-bind and fight our handler. */
+.slicer-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
 .slicer-dropdown .dropdown-menu {
     min-width: 200px;
     z-index: 9999;
@@ -293,6 +301,22 @@
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
+}
+
+/* When a menu is portaled to <body> (see printing.js) it is no longer a
+   descendant of .slicer-dropdown.open, so drive its visibility directly. The
+   portal escapes ancestor overflow:hidden / transform traps (e.g. model cards)
+   that would otherwise clip the lower slicer entries. */
+.dropdown-menu.slicer-menu-portal {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    /* Portaled out of .slicer-dropdown, so restate sizing here: as a block child
+       of <body> the menu would otherwise stretch to the full page width. */
+    width: max-content;
+    min-width: 200px;
+    max-width: 260px;
+    z-index: 9999;
 }
 
 .slicer-download-hint {
