@@ -1,21 +1,14 @@
 /**
  * MeshSilo Printing Plugin - JavaScript
  *
- * Handles print queue toggling, print type selection, printed status,
- * mass print-type actions, slicer integration, cost calculation,
- * and keyboard shortcuts for printing features.
+ * Handles print type selection, printed status, mass print-type actions,
+ * slicer integration, and cost calculation.
  */
 
 /* =====================
-   Print Queue Toggle
+   Shared Helpers
    ===================== */
 
-/**
- * Toggle a model's presence in the print queue via AJAX.
- *
- * @param {number} modelId - The model ID to toggle.
- * @param {HTMLElement} btn - The queue button element.
- */
 /**
  * Read the plugin's CSRF token (rendered by boot.php into #printing-csrf) and
  * return it as a URL-encoded "name=value" pair for inclusion in fetch bodies,
@@ -29,27 +22,6 @@ function printingCsrfBody() {
     const input = holder.querySelector('input[name]');
     if (!input || !input.value) return '';
     return encodeURIComponent(input.name) + '=' + encodeURIComponent(input.value);
-}
-
-async function togglePrintQueue(modelId, btn) {
-    try {
-        let body = 'action=toggle&model_id=' + encodeURIComponent(modelId);
-        const csrf = printingCsrfBody();
-        if (csrf) body += '&' + csrf;
-
-        const response = await fetch('/actions/print-queue', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body
-        });
-        const data = await response.json();
-        if (data.success) {
-            btn.classList.toggle('in-queue', data.in_queue);
-            btn.title = data.in_queue ? 'Remove from print queue' : 'Add to print queue';
-        }
-    } catch (err) {
-        console.error('Failed to toggle print queue:', err);
-    }
 }
 
 /* =====================
@@ -568,61 +540,5 @@ document.addEventListener('DOMContentLoaded', function () {
             + '<div class="dropdown-menu dropdown-menu-right">' + links + '</div>';
         actions.appendChild(wrap);
     });
-
-    /* -----------------------
-       Keyboard Shortcuts
-       ----------------------- */
-
-    // Register printing-related keyboard shortcuts.
-    // These integrate with the existing KeyboardNav class if present,
-    // or fall back to a standalone keydown listener.
-
-    if (typeof KeyboardNav !== 'undefined' && window.keyboardNav) {
-        // KeyboardNav is already instantiated - shortcuts are registered
-        // via its constructor in main.js ('q' and 'g q'). No duplicate
-        // registration needed when the core shortcuts object already
-        // contains these entries.
-    } else {
-        // Standalone fallback: register shortcuts directly when KeyboardNav
-        // is not available (e.g., on pages that don't load main.js).
-        var pendingKey = null;
-        var pendingTimer = null;
-
-        document.addEventListener('keydown', function (e) {
-            // Skip when user is typing in an input, textarea, or select
-            var tag = (e.target.tagName || '').toLowerCase();
-            if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) {
-                return;
-            }
-
-            var key = e.key;
-
-            // Handle two-key combos (g q)
-            if (pendingKey === 'g') {
-                clearTimeout(pendingTimer);
-                pendingKey = null;
-
-                if (key === 'q') {
-                    // Go to print queue page
-                    window.location.href = '/print-queue';
-                    return;
-                }
-            }
-
-            if (key === 'g') {
-                pendingKey = 'g';
-                pendingTimer = setTimeout(function () { pendingKey = null; }, 500);
-                return;
-            }
-
-            if (key === 'q') {
-                // Toggle print queue for the focused/selected model
-                var queueBtn = document.querySelector('.queue-btn');
-                if (queueBtn) {
-                    queueBtn.click();
-                }
-            }
-        });
-    }
 
 });

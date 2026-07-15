@@ -66,20 +66,6 @@ if (!function_exists('printingJson')) {
     }
 
     /**
-     * Fetch a printer the current user may manage (its owner, or an admin),
-     * or stop with 403/permission. Returns the printer row.
-     */
-    function printingRequireOwnedPrinter($db, int $printerId, array $user): array {
-        $stmt = $db->prepare('SELECT user_id FROM printers WHERE id = :id');
-        $stmt->execute([':id' => $printerId]);
-        $printer = $stmt->fetch();
-        if (!$printer || ($printer['user_id'] != $user['id'] && !$user['is_admin'])) {
-            printingFail('Permission denied', 403);
-        }
-        return $printer;
-    }
-
-    /**
      * Require that the current user may edit $modelId (its owner, an admin, or
      * canEdit()), or stop with 404/403. Returns the model row.
      */

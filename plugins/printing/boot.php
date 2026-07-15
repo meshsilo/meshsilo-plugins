@@ -8,24 +8,16 @@
 
 // Load libraries
 require_once $pluginDir . '/lib/http.php';
-require_once $pluginDir . '/lib/PrintFunctions.php';
 require_once $pluginDir . '/lib/gcode.php';
 require_once $pluginDir . '/lib/slicers.php';
 require_once $pluginDir . '/lib/VolumeCalculator.php';
 require_once $pluginDir . '/lib/MeshAnalyzer.php';
 
-// Register page routes
-$plugin->addRoute('GET', '/print-queue', ['file' => $pluginDir . '/pages/print-queue.php'], 'print-queue');
-$plugin->addRoute('GET', '/printers', ['file' => $pluginDir . '/pages/printers.php'], 'printers');
-
 // Register action routes
-$plugin->addRoute('POST', '/actions/print-queue', ['file' => $pluginDir . '/actions/print-queue.php'], 'actions.print-queue');
-$plugin->addRoute('POST', '/actions/printer', ['file' => $pluginDir . '/actions/printer.php'], 'actions.printer');
 $plugin->addRoute('POST', '/actions/print-photo', ['file' => $pluginDir . '/actions/print-photo.php'], 'actions.print-photo');
 $plugin->addRoute('GET', '/actions/print-photo', ['file' => $pluginDir . '/actions/print-photo.php'], 'actions.print-photo.get');
 $plugin->addRoute('POST', '/actions/cost-calculator', ['file' => $pluginDir . '/actions/cost-calculator.php'], 'actions.cost-calculator');
 $plugin->addRoute('GET', '/actions/cost-calculator', ['file' => $pluginDir . '/actions/cost-calculator.php'], 'actions.cost-calculator.get');
-$plugin->addRoute('GET', '/actions/printer', ['file' => $pluginDir . '/actions/printer.php'], 'actions.printer.get');
 $plugin->addRoute('POST', '/actions/mesh', ['file' => $pluginDir . '/actions/mesh.php'], 'actions.mesh');
 $plugin->addRoute('GET', '/actions/mesh', ['file' => $pluginDir . '/actions/mesh.php'], 'actions.mesh.get');
 $plugin->addRoute('POST', '/actions/slicer', ['file' => $pluginDir . '/actions/slicer.php'], 'actions.slicer');
@@ -43,40 +35,9 @@ $plugin->addFilter('public_routes', function($routes) {
 $plugin->addStylesheet('printing', 'printing.css');
 $plugin->addScript('printing', 'printing.js');
 
-// Add navigation items
-$plugin->addFilter('nav_items', function($items) {
-    $items[] = [
-        'label' => 'Print Queue',
-        'url' => '/print-queue',
-        'icon' => 'printer',
-        'active' => ($_GET['route'] ?? '') === 'print-queue'
-    ];
-    $items[] = [
-        'label' => 'Printers',
-        'url' => '/printers',
-        'icon' => 'cpu',
-        'active' => ($_GET['route'] ?? '') === 'printers'
-    ];
-    return $items;
-});
-
 // Register feature toggles matching the core features.php format
 $plugin->addFilter('available_features', function($features) {
     $printFeatures = [
-        'print_queue' => [
-            'name' => 'Print Queue',
-            'description' => 'Queue models for printing with priority management',
-            'icon' => 'printer',
-            'category' => 'Printing',
-            'default' => true,
-        ],
-        'printers' => [
-            'name' => 'Printer Profiles',
-            'description' => 'Manage printer specifications and bed sizes',
-            'icon' => 'settings',
-            'category' => 'Printing',
-            'default' => true,
-        ],
         'print_history' => [
             'name' => 'Print History',
             'description' => 'Track print jobs with filament usage and ratings',
@@ -106,19 +67,6 @@ $plugin->addFilter('available_features', function($features) {
         }
     }
     return $features;
-});
-
-// Model header actions - print queue button
-$plugin->addFilter('model_header_actions', function($html, $model) {
-    if (!function_exists('isFeatureEnabled') || !isFeatureEnabled('print_queue')) return $html;
-    if (!function_exists('isLoggedIn') || !isLoggedIn()) return $html;
-
-    $inQueue = isInPrintQueue($_SESSION['user_id'], $model['id']);
-    $class = $inQueue ? ' in-queue' : '';
-    $title = $inQueue ? 'Remove from print queue' : 'Add to print queue';
-
-    $html .= '<button type="button" class="queue-btn' . $class . '" onclick="togglePrintQueue(' . (int)$model['id'] . ', this)" title="' . htmlspecialchars($title) . '">&#128424;</button>';
-    return $html;
 });
 
 // Model header actions - "Send to slicer" dropdown for a sliceable model
@@ -274,17 +222,6 @@ $plugin->addFilter('after_upload', function($result, $modelId, $data) {
         }
     }
     return $result;
-});
-
-// Model card extra - queue button on browse page
-$plugin->addFilter('model_card_extra', function($html, $model) {
-    if (!function_exists('isFeatureEnabled') || !isFeatureEnabled('print_queue')) return $html;
-    if (!function_exists('isLoggedIn') || !isLoggedIn()) return $html;
-
-    $inQueue = isInPrintQueue($_SESSION['user_id'], $model['id']);
-    $class = $inQueue ? ' in-queue' : '';
-    $html .= '<button type="button" class="queue-btn queue-btn-card' . $class . '" onclick="event.preventDefault();event.stopPropagation();togglePrintQueue(' . (int)$model['id'] . ', this)" title="Print Queue">&#128424;</button>';
-    return $html;
 });
 
 // Model detail tab - mesh analysis for STL models
