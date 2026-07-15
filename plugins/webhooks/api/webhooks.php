@@ -10,35 +10,21 @@
  */
 
 /**
- * Validate webhook URL is not targeting internal/private resources (SSRF prevention)
+ * Webhook URL SSRF validation (validateWebhookUrl) is provided by
+ * lib/WebhookFunctions.php, which is loaded on every request by boot.php.
+ * It resolves all A/AAAA records and rejects private/loopback/reserved ranges
+ * for both IPv4 and IPv6, and is re-run at delivery time.
  */
-function validateWebhookUrl(string $url): bool {
-    if (!filter_var($url, FILTER_VALIDATE_URL)) {
-        return false;
-    }
-    $parsed = parse_url($url);
-    $scheme = strtolower($parsed['scheme'] ?? '');
-    if (!in_array($scheme, ['http', 'https'])) {
-        return false;
-    }
-    $host = $parsed['host'] ?? '';
-    // Block localhost and common internal hostnames
-    $blockedHosts = ['localhost', '127.0.0.1', '0.0.0.0', '[::1]', 'metadata.google.internal'];
-    if (in_array(strtolower($host), $blockedHosts)) {
-        return false;
-    }
-    // Resolve hostname and check for private IPs
-    $ip = gethostbyname($host);
-    if ($ip === $host && !filter_var($host, FILTER_VALIDATE_IP)) {
-        return false; // DNS resolution failed
-    }
-    if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-        return false;
-    }
-    return true;
-}
 
-function handleWebhooksRoute($method, $id, $apiUser) {
+/**
+ * app/api/index.php's plugin dispatch calls this as
+ * call_user_func($handler, $method, $id, $subResource, $apiUser) - four
+ * positional args. $subResource is unused here (this API has no third path
+ * segment) but must still be declared, or $apiUser silently binds to
+ * $subResource's value instead and every requireApiPermission() call below
+ * gets a null user.
+ */
+function handleWebhooksRoute($method, $id, $subResource, $apiUser) {
     switch ($method) {
         case 'GET':
             if ($id === null) {

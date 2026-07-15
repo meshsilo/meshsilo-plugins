@@ -13,6 +13,15 @@ require_once $pluginDir . '/lib/WebhookDelivery.php';
 $plugin->addRoute('GET', '/admin/webhooks', ['file' => $pluginDir . '/admin/webhooks.php'], 'admin.webhooks');
 $plugin->addRoute('POST', '/admin/webhooks', ['file' => $pluginDir . '/admin/webhooks.php'], 'admin.webhooks.save');
 
+// Expose GET/POST/PUT/DELETE /api/webhooks[/{id}] through the API dispatcher.
+// Without this registration the handler file is never loaded and the
+// resource 404s regardless of what api/webhooks.php implements.
+$plugin->addFilter('api_routes', function($routes) use ($pluginDir) {
+    require_once $pluginDir . '/api/webhooks.php';
+    $routes['webhooks'] = 'handleWebhooksRoute';
+    return $routes;
+});
+
 // Register admin menu item
 $plugin->addAdminMenuItem('Integration', 'Webhooks', 'link', 'admin.webhooks');
 
@@ -75,14 +84,28 @@ $plugin->addFilter('scheduled_tasks', function($tasks) {
             // Retry failed webhook deliveries
             if (function_exists('getDB')) {
                 $db = getDB();
-                $stmt = $db->prepare("SELECT * FROM webhook_deliveries WHERE http_code >= 400 AND retries < 3 AND created_at > datetime('now', '-1 hour')");
-                $result = $stmt->execute();
+
+                // Only retry recent failures, up to 3 times each.
+                if (defined('DB_TYPE') && DB_TYPE === 'mysql') {
+                    $sql = "SELECT * FROM webhook_deliveries WHERE http_code >= 400 AND retries < 3 AND created_at > (NOW() - INTERVAL 1 HOUR)";
+                } else {
+                    $sql = "SELECT * FROM webhook_deliveries WHERE http_code >= 400 AND retries < 3 AND created_at > datetime('now', '-1 hour')";
+                }
+                $stmt = $db->prepare($sql);
+                $stmt->execute();
+                // Materialize rows first so re-delivery logging can't affect this cursor.
+                $deliveries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
                 $retried = 0;
-                while ($delivery = $result->fetchArray(PDO::FETCH_ASSOC)) {
-                    // Re-deliver
+                foreach ($deliveries as $delivery) {
                     $webhook = getWebhookById($delivery['webhook_id']);
                     if ($webhook) {
-                        WebhookDelivery::sendWebhook($webhook, json_decode($delivery['payload'], true) ?: []);
+                        // Re-deliver WITHOUT logging a new row, then advance this
+                        // row's retry counter so it is retried at most 3 times.
+                        $ok = WebhookDelivery::sendWebhook($webhook, json_decode($delivery['payload'], true) ?: [], false);
+                        $newCode = $ok ? 200 : (int)$delivery['http_code'];
+                        $upd = $db->prepare('UPDATE webhook_deliveries SET retries = retries + 1, http_code = :code WHERE id = :id');
+                        $upd->execute([':code' => $newCode, ':id' => $delivery['id']]);
                         $retried++;
                     }
                 }
