@@ -12,3 +12,8 @@ Thumbs.db
 .claude/
 CLAUDE.md
 **/CLAUDE.md
+
+# Claude Bridge - kept local-only, not part of the official plugin repo
+plugins/claude-bridge/
+.meshsilo/
+scripts/meshsilo-logs.sh
