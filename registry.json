@@ -66,7 +66,7 @@
         {
             "id": "printing",
             "name": "3D Printing Tools",
-            "version": "1.1.0",
+            "version": "1.1.1",
             "description": "Print queue, printer profiles, slicer integration, GCode parsing, cost calculator, and mesh analysis.",
             "author": "MeshSilo",
             "category": "Printing",
